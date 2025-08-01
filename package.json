@@ -1,0 +1,20 @@
+{
+  "name": "pyechan-bot",
+  "version": "1.0.0",
+  "description": "Bot del Discord oficial de la comunidad Programadores y Estudiantes (PyE)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:dev": "tsc --watch",
+    "start": "tsc && node .",
+    "dev": "tsc-watch --onSuccess \"node .\""
+  },
+  "author": "Comunidad PyE",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "tsc-watch": "^6.2.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {}
+}
