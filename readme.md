@@ -1,2 +1,2 @@
-# pyechan-bot
-¡Soy PyE Chan, el bot de la comunidad!
+# pye-bot
+¡Soy PyE Bot, el bot de la comunidad!

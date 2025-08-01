@@ -1,5 +1,5 @@
 {
-	"name": "pyechan-bot",
+	"name": "pyebot",
 	"version": "1.0.0",
 	"description": "Bot del Discord oficial de la comunidad Programadores y Estudiantes (PyE)",
 	"main": "dist/index.js",
