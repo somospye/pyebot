@@ -6,7 +6,6 @@ export default config.bot({
 		base: "dist",
 		commands: "commands",
 		events: "events",
-		components: "components",
 	},
 	token: process.env.TOKEN ?? "",
 	intents: ["Guilds"], // faltan agregar más intents
