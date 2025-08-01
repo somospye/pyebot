@@ -16,5 +16,8 @@
     "tsc-watch": "^6.2.0",
     "typescript": "^5.5.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "seyfert": "^3.2.4"
+  }
 }
