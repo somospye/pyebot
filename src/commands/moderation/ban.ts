@@ -1,10 +1,11 @@
-import type { CommandContext } from "seyfert";
+import type { GuildCommandContext } from "seyfert";
 import {
 	Command,
 	createStringOption,
 	createUserOption,
 	Declare,
 	Embed,
+	InteractionGuildMember,
 	Options,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
@@ -28,7 +29,7 @@ const options = {
 })
 @Options(options)
 export default class BanCommand extends Command {
-	async run(ctx: CommandContext<typeof options>) {
+	async run(ctx: GuildCommandContext<typeof options>) {
 		const guild = await ctx.guild();
 
 		if (ctx.author.id === ctx.options.user.id)
@@ -39,9 +40,10 @@ export default class BanCommand extends Command {
 		const memberHighestRole = ctx.member
 			? await ctx.member.roles.highest()
 			: undefined;
-		const targetMember = guild
-			? await guild.members.fetch(ctx.options.user.id)
-			: undefined;
+		const targetMember =
+			ctx.options.user instanceof InteractionGuildMember
+				? ctx.options.user
+				: undefined;
 		const targetHighestRole = targetMember
 			? await targetMember.roles.highest()
 			: undefined;
@@ -59,7 +61,7 @@ export default class BanCommand extends Command {
 		const reasonOption = ctx.options.reason || "Razón no especificada";
 		const reason = `${reasonOption} | Baneado por ${ctx.author.username}`;
 
-		guild?.bans.create(ctx.options.user.id, {}, reason);
+		await guild.bans.create(ctx.options.user.id, {}, reason);
 
 		// TODO: logging
 
@@ -77,7 +79,7 @@ export default class BanCommand extends Command {
 			},
 		});
 
-		ctx.write({
+		await ctx.write({
 			embeds: [successEmbed],
 		});
 	}
