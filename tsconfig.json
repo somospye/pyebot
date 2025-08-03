@@ -20,6 +20,9 @@
 		"outDir": "./dist",
 		"rootDir": "./src",
 		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"]
+		},
 		"stripInternal": true
 	},
 	"exclude": ["node_modules"],
