@@ -25,6 +25,12 @@ export default class SelfMuteCommand extends Command {
           "✗ Formato de tiempo invalido. **Ejemplos válidos:** 10min, 1h, 3d, 2m, 5s.",
       });
 
+    const moderatable = await ctx.member.moderatable();
+    if (!moderatable)
+      return await ctx.write({
+        content: "✗ No tengo los permisos suficientes.",
+      });
+
     const milliseconds = ms.parse(time) || 0;
     ctx.member.timeout(milliseconds, `Comando self-mute | Tiempo: ${time}`);
 
