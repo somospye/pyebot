@@ -91,6 +91,28 @@ export function format(ms: number, long = false): string {
   return parts.join(long ? ", " : " ");
 }
 
+export function isValid(str: string): boolean {
+  if (typeof str !== "string") return false;
+
+  const parts = str
+    .trim()
+    .toLowerCase()
+    .split(/[\s,]+/);
+
+  if (parts.length % 2 !== 0) return false;
+
+  for (let i = 0; i < parts.length; i += 2) {
+    const value = parseFloat(parts[i]);
+    const unit = parts[i + 1];
+
+    if (Number.isNaN(value) || !unit || !(unit in timeUnits)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function longUnitName(short: string, value: number): string {
   const unitMap: Record<string, string> = {
     ms: "millisecond",
@@ -109,4 +131,5 @@ function longUnitName(short: string, value: number): string {
 export default {
   parse,
   format,
+  isValid,
 };
