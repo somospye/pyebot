@@ -1,3 +1,4 @@
+import "module-alias/register";
 import type { ParseClient } from "seyfert";
 import { Client, extendContext } from "seyfert";
 import { db } from "@/db";
