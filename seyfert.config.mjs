@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { config } from "seyfert";
 
+if (!process.env.TOKEN) throw Error("missing 'TOKEN' env variable");
+
 export default config.bot({
   locations: {
     base: "dist",
