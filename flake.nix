@@ -39,7 +39,7 @@
               nodejs
               nodePackages.pnpm
               # hooks
-              husky
+              lefthook
               # lint & format
               biome
             ];
