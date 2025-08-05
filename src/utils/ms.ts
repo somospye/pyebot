@@ -44,23 +44,33 @@ const preferredUnits: [string, number][] = [
   ["ms", timeUnits.ms],
 ];
 
+function parseTimeParts(str: string): Array<{ value: number; unit: string }> {
+  const regex = /(\d+(?:\.\d+)?)\s*([a-z]+)/gi;
+  const matches = str.matchAll(regex);
+  const parts: Array<{ value: number; unit: string }> = [];
+
+  for (const match of matches) {
+    const value = parseFloat(match[1]);
+    const unit = match[2].toLowerCase();
+
+    if (!Number.isNaN(value) && unit in timeUnits) {
+      parts.push({ value, unit });
+    } else {
+      return [];
+    }
+  }
+
+  return parts;
+}
+
 export function parse(str: string): number | undefined {
   if (typeof str !== "string") return;
 
-  const parts = str
-    .trim()
-    .toLowerCase()
-    .split(/[\s,]+/);
+  const parts = parseTimeParts(str);
+  if (parts.length === 0) return;
+
   let total = 0;
-
-  for (let i = 0; i < parts.length; i += 2) {
-    const value = parseFloat(parts[i]);
-    const unit = parts[i + 1];
-
-    if (Number.isNaN(value) || !unit || !(unit in timeUnits)) {
-      return;
-    }
-
+  for (const { value, unit } of parts) {
     total += value * timeUnits[unit];
   }
 
@@ -94,23 +104,8 @@ export function format(ms: number, long = false): string {
 export function isValid(str: string): boolean {
   if (typeof str !== "string") return false;
 
-  const parts = str
-    .trim()
-    .toLowerCase()
-    .split(/[\s,]+/);
-
-  if (parts.length % 2 !== 0) return false;
-
-  for (let i = 0; i < parts.length; i += 2) {
-    const value = parseFloat(parts[i]);
-    const unit = parts[i + 1];
-
-    if (Number.isNaN(value) || !unit || !(unit in timeUnits)) {
-      return false;
-    }
-  }
-
-  return true;
+  const parts = parseTimeParts(str);
+  return parts.length > 0;
 }
 
 function longUnitName(short: string, value: number): string {
