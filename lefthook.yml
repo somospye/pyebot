@@ -1,4 +1,5 @@
 pre-commit:
+  parallel: true
   jobs:
     - name: lint staged
       run: pnpm exec lint-staged
