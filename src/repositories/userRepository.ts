@@ -48,9 +48,36 @@ async function addWarn(discordId: string, newWarn: Warn) {
     .where(eq(users.id, discordId));
 }
 
+async function removeWarn(discordId: string, warnId: number) {
+  const userResult = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, discordId))
+    .limit(1);
+
+  if (userResult.length === 0) {
+    throw new Error("Usuario no encontrado");
+  }
+
+  const user = userResult[0];
+  const warns = user.warns ?? [];
+
+  const filteredWarns = warns.filter((warn: Warn) => warn.warn_id !== warnId);
+
+  if (filteredWarns.length === warns.length) {
+    throw new Error(`No se encontró el warn con el ID ${warnId}`);
+  }
+
+  await db
+    .update(users)
+    .set({ warns: filteredWarns })
+    .where(eq(users.id, discordId));
+}
+
 export const userRepository = {
   create,
   has,
   get,
   addWarn,
+  removeWarn,
 };
