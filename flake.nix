@@ -40,6 +40,8 @@
               nodePackages.pnpm
               # hooks
               husky
+              # lint & format
+              biome
             ];
           };
         }
