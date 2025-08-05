@@ -1,10 +1,10 @@
 import { integer, jsonb, pgTable, varchar } from "drizzle-orm/pg-core";
 
-type User = {
+export type User = {
   id: string;
   bank: number;
   cash: number;
-  warns: Warn[];
+  warns: Warn[] | null;
 };
 
 export type Warn = {
