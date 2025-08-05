@@ -10,7 +10,7 @@ export type User = {
 export type Warn = {
   reason: string;
   warn_id: number; // incremental
-  moderador: User;
+  moderator: string;
   timestamp: string; // Date ISO
 };
 
