@@ -1,0 +1,5 @@
+pre-commit:
+  jobs:
+    - name: lint staged
+      run: pnpm exec lint-staged
+
