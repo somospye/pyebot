@@ -10,5 +10,5 @@ export default config.bot({
     events: "events",
   },
   token: process.env.TOKEN ?? "",
-  intents: ["Guilds"], // faltan agregar más intents
+  intents: ["Guilds", "GuildMessages", "MessageContent"], // faltan agregar más intents
 });
