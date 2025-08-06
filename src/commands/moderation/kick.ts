@@ -26,46 +26,36 @@ const options = {
   description: "Expulsar a un usuario del servidor",
   defaultMemberPermissions: ["KickMembers"],
   botPermissions: ["KickMembers"],
+  contexts: ["Guild"],
+  integrationTypes: ["GuildInstall"],
 })
 @Options(options)
 export default class KickCommand extends Command {
   async run(ctx: GuildCommandContext<typeof options>) {
-    if (ctx.author.id === ctx.options.user.id)
+    const { user, reason = "Razón no especificada" } = ctx.options;
+
+    if (ctx.author.id === user.id)
       return ctx.write({
         content: "✗ No podés expulsarte a vos mismo.",
       });
 
-    const memberHighestRole = ctx.member
-      ? await ctx.member.roles.highest()
-      : undefined;
     const targetMember =
-      ctx.options.user instanceof InteractionGuildMember
-        ? ctx.options.user
-        : undefined;
-    const targetHighestRole = targetMember
-      ? await targetMember.roles.highest()
-      : undefined;
+      user instanceof InteractionGuildMember ? user : undefined;
 
-    if (
-      memberHighestRole &&
-      targetHighestRole &&
-      memberHighestRole.position <= targetHighestRole.position
-    )
+    if (!targetMember)
+      return ctx.write({
+        content: "✗ No se pudo encontrar al miembro a expulsar en el servidor.",
+      });
+
+    if (!(await targetMember.moderatable()))
       return ctx.write({
         content:
           "✗ No podés expulsar a un usuario con un rol igual o superior al tuyo.",
       });
 
-    const reasonOption = ctx.options.reason || "Razón no especificada";
-    const reason = `${reasonOption} | Expulsado por ${ctx.author.username}`;
+    const text = `${reason} | Expulsado por ${ctx.author.username}`;
 
-    if (!targetMember) {
-      return ctx.write({
-        content: "✗ No se pudo encontrar al miembro a expulsar en el servidor.",
-      });
-    }
-
-    await targetMember.kick(reason);
+    await targetMember.kick(text);
 
     // TODO: logging
 
@@ -74,12 +64,12 @@ export default class KickCommand extends Command {
       description: `
             ✓ El usuario **${ctx.options.user.username}** fue expulsado correctamente.
             
-            **Razón:** ${reasonOption}
+            **Razón:** ${reason}
             `,
       color: EmbedColors.Green,
       footer: {
         text: `Expulsado por ${ctx.author.username}`,
-        icon_url: ctx.author.avatarURL() || undefined,
+        icon_url: ctx.author.avatarURL(),
       },
     });
 

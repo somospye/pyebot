@@ -14,7 +14,7 @@ export default createEvent({
     const shouldReply =
       wasMentioned ||
       (message.referencedMessage &&
-        message?.referencedMessage.author.id === process.env.CLIENT_ID);
+        message?.referencedMessage.author.id === client.applicationId);
 
     if (!shouldReply) return;
 
