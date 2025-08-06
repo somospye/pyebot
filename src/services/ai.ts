@@ -1,13 +1,16 @@
 import {
-  type EnhancedGenerateContentResponse,
-  type GenerateContentCandidate,
-  type GenerateContentRequest,
-  GoogleGenerativeAIFetchError,
-  type Part,
-} from "@google/generative-ai";
-import { BOT_REPLY_MODEL } from "@/constants/ai";
+  type Content,
+  type GenerateContentResponse,
+  GoogleGenAI,
+  Modality,
+} from "@google/genai";
+import { SAFETY_SETTINGS } from "@/constants/ai";
 import { getContextMessages } from "@/utils/getContext";
-import { type Message, type Role, userMemory } from "@/utils/userMemory";
+import { type Message, userMemory } from "@/utils/userMemory";
+
+const genAI = new GoogleGenAI({
+  apiKey: process.env.GOOGLE_GENAI_API_KEY,
+});
 
 interface ProcessMessageOptions {
   userId: string;
@@ -15,11 +18,16 @@ interface ProcessMessageOptions {
   quotedText?: string;
 }
 
+interface AIResponse {
+  text: string;
+  image?: Buffer;
+}
+
 export const processMessage = async ({
   userId,
   message,
   quotedText,
-}: ProcessMessageOptions): Promise<string> => {
+}: ProcessMessageOptions): Promise<AIResponse> => {
   try {
     const memory = userMemory.get(userId);
 
@@ -28,87 +36,79 @@ export const processMessage = async ({
     const messages: Message[] = [
       ...context,
       ...memory,
-      { role: "user" as Role, content: message },
+      { role: "user", content: message },
     ];
 
     const aiResponse = await callGeminiAI(messages);
 
     userMemory.append(userId, { role: "user", content: message });
-    userMemory.append(userId, { role: "assistant", content: aiResponse });
+    userMemory.append(userId, { role: "model", content: aiResponse.text });
 
     return aiResponse;
   } catch (error) {
     console.error("[processMessage] Error:", error);
-    return "Ocurrió un error procesando tu mensaje.";
+    return {
+      text: "Ocurrió un error procesando tu mensaje.",
+    };
   }
 };
 
-export const callGeminiAI = async (messages: Message[]): Promise<string> => {
-  const userParts: Part[] = messages.map((m) => ({ text: m.content }));
-
-  const request: GenerateContentRequest = {
-    contents: [
-      {
-        role: "user",
-        parts: userParts,
-      },
-    ],
-  };
+export const callGeminiAI = async (
+  messages: Message[],
+): Promise<AIResponse> => {
+  const contents: Content[] = messages.map((msg) => ({
+    role: msg.role,
+    parts: [{ text: msg.content }],
+  }));
 
   try {
-    const result = await BOT_REPLY_MODEL.generateContent(request, {
-      timeout: 10000,
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-preview-image-generation",
+      contents,
+      config: {
+        safetySettings: SAFETY_SETTINGS,
+        candidateCount: 1,
+        maxOutputTokens: 800,
+        temperature: 0.68,
+        topK: 35,
+        topP: 0.77,
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
     });
 
-    const response = await result.response;
-    const { text } = await processResponse(response);
-
-    return text;
+    return await processResponse(response);
   } catch (e) {
-    if (e instanceof GoogleGenerativeAIFetchError) {
-      return "En este momento, la IA no puede responder tu pregunta.\nIntenta de nuevo más tarde.";
-    }
     console.error("[callGeminiAI] Error:", e);
-    return "Mejor comamos un poco de sushi 🍣";
+    return {
+      text: "Mejor comamos un poco de sushi 🍣",
+    };
   }
 };
 
 async function processResponse(
-  response:
-    | EnhancedGenerateContentResponse
-    | { text: () => string; candidates: GenerateContentCandidate[] },
-): Promise<{ text: string; image?: Buffer; audio?: Buffer }> {
+  response: GenerateContentResponse,
+): Promise<{ text: string; image?: Buffer }> {
   let text = "";
   let image: Buffer | undefined;
-  let audio: Buffer | undefined;
 
-  if (!response || !response.candidates) {
+  const candidates = response?.candidates ?? [];
+
+  if (candidates.length === 0) {
     return { text: "Mejor comamos un poco de sushi! 🍣" };
   }
 
-  // Procesar audio o imagen si es necesario (funcion generica para distintos modelos)
-  if (response?.candidates?.length > 0) {
-    const candidate = response?.candidates[0];
-    if (candidate.content?.parts) {
-      for (const part of candidate.content.parts) {
-        if (part.text) {
-          text += part.text;
-        } else if (part.inlineData) {
-          if (part.inlineData.mimeType.startsWith("image")) {
-            image = Buffer.from(part.inlineData.data, "base64");
-          } else if (part.inlineData.mimeType.startsWith("audio")) {
-            audio = Buffer.from(part.inlineData.data, "base64");
-          }
-        }
-      }
+  const parts = candidates[0].content?.parts ?? [];
+
+  for (const part of parts) {
+    if ("text" in part && typeof part.text === "string") {
+      text += part.text;
+    } else if (part?.inlineData?.mimeType && part.inlineData.data) {
+      image = Buffer.from(part.inlineData.data, "base64");
     }
-  } else {
-    text = response.text ? response.text() : "";
   }
 
-  if (!text || text.trim().length === 0) {
-    text = "Mejor comamos un poco de sushi! 🍣";
-  }
-
-  return { text, image, audio };
+  return {
+    text: text.trim() || "Mejor comamos un poco de sushi! 🍣",
+    image,
+  };
 }

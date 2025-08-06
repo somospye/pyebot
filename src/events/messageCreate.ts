@@ -1,5 +1,6 @@
 import { createEvent } from "seyfert";
 import { processMessage } from "@/services/ai";
+import { sendPaginatedMessages } from "@/utils/messages";
 
 export default createEvent({
   data: { name: "messageCreate" },
@@ -22,6 +23,15 @@ export default createEvent({
       message: content,
     });
 
-    await message.reply({ content: response });
+    if (response.image) {
+      const file = {
+        filename: "sushi.png",
+        data: response.image,
+      };
+      await message.reply({ content: response.text, files: [file] });
+      return;
+    }
+
+    await sendPaginatedMessages(message, response.text, true);
   },
 });

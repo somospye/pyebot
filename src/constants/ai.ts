@@ -1,11 +1,8 @@
 import {
-  GoogleGenerativeAI,
   HarmBlockThreshold,
   HarmCategory,
   type SafetySetting,
-} from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.gemini_API_KEY ?? "");
+} from "@google/genai";
 
 export const SAFETY_SETTINGS: SafetySetting[] = [
   {
@@ -34,18 +31,6 @@ export const BOT_PROMPT = `
     Eres PyE Bot (${process.env.CLIENT_ID}), 
     una programadora que ayuda a los demas con sus problemas y dudas. 
     Intenta resolver, ayudar y explicar en pocas palabras los problemas de codigo de los demas porgramadores de manera clara y simple.
-`;
 
-export const BOT_REPLY_MODEL = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
-  safetySettings: SAFETY_SETTINGS,
-  systemInstruction: BOT_PROMPT,
-  generationConfig: {
-    //responseModalities: ["Text", "Image"],
-    candidateCount: 1,
-    maxOutputTokens: 800,
-    temperature: 0.68,
-    topK: 35,
-    topP: 0.77,
-  },
-});
+    Siempre responde en español, y si debes generar una imagen, no le pongas el prompt como texto.
+`;
