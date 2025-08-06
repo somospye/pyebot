@@ -20,8 +20,30 @@ services:
       timeout: 10s
       retries: 3
 
+  keydb:
+    image: eqalpha/keydb
+    container_name: keydb
+    restart: unless-stopped
+    ports:
+      - "${KEYDB_PORT:-6379}:6379"
+    volumes:
+      - keydb_data:/data
+    environment:
+      KEYDB_PASSWORD: ${KEYDB_PASSWORD:-changeme}
+    command: >
+      keydb-server
+      --requirepass ${KEYDB_PASSWORD:-changeme}
+      --appendonly ${KEYDB_APPENDONLY:-yes}
+      --dir /data
+    healthcheck:
+      test: ["CMD", "keydb-cli", "-a", "${KEYDB_PASSWORD:-changeme}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
+  keydb_data:
 
 networks:
   postgres_network:

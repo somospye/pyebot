@@ -32,9 +32,12 @@
     "@google/genai": "^1.12.0",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.4",
+    "ioredis": "^5.7.0",
     "module-alias": "^2.2.3",
     "pg": "^8.16.3",
-    "seyfert": "^3.2.5"
+    "seyfert": "^3.2.5",
+    "sharp": "^0.34.3",
+    "tesseract.js": "^6.0.1"
   },
   "lint-staged": {
     "*.{ts,js,mjs,cjs,json}": "biome check --write"
