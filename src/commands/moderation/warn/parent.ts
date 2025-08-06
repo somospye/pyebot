@@ -1,8 +1,8 @@
 import { Command, Declare, Options } from "seyfert";
 
 import { AddWarnCommand } from "./add.command";
-import { RemoveWarnCommand } from "./remove.command";
 import { ListWarnCommand } from "./list.command";
+import { RemoveWarnCommand } from "./remove.command";
 
 @Declare({
   name: "warn",
