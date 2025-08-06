@@ -1,14 +1,14 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { type User, users, type Warn } from "@/schemas/userSchema";
+import { type User, users, type Warn } from "@/schemas/user";
 
-async function create(discordId: string) {
+export async function create(discordId: string) {
   return await db.insert(users).values({
     id: discordId,
   });
 }
 
-async function has(discordId: string): Promise<boolean> {
+export async function has(discordId: string): Promise<boolean> {
   const result = await db
     .select()
     .from(users)
@@ -18,7 +18,7 @@ async function has(discordId: string): Promise<boolean> {
   return result.length > 0;
 }
 
-async function get(discordId: string): Promise<User> {
+export async function get(discordId: string): Promise<User> {
   const result = await db
     .select()
     .from(users)
@@ -28,7 +28,7 @@ async function get(discordId: string): Promise<User> {
   return result[0];
 }
 
-async function addWarn(discordId: string, newWarn: Warn) {
+export async function addWarn(discordId: string, newWarn: Warn) {
   const user = await db
     .select()
     .from(users)
@@ -48,7 +48,7 @@ async function addWarn(discordId: string, newWarn: Warn) {
     .where(eq(users.id, discordId));
 }
 
-async function removeWarn(discordId: string, warnId: number) {
+export async function removeWarn(discordId: string, warnId: number) {
   const userResult = await db
     .select()
     .from(users)
@@ -73,11 +73,3 @@ async function removeWarn(discordId: string, warnId: number) {
     .set({ warns: filteredWarns })
     .where(eq(users.id, discordId));
 }
-
-export const userRepository = {
-  create,
-  has,
-  get,
-  addWarn,
-  removeWarn,
-};

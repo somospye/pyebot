@@ -1,7 +1,5 @@
-import { users } from "@/schemas/userSchema";
+import { users } from "@/schemas/user";
 
 export const schemas = {
   users,
 };
-
-export { users };

@@ -1,7 +1,7 @@
 import type { Guild, GuildCommandContext } from "seyfert";
 import { createUserOption, Declare, Embed, Options, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import type { Warn } from "@/schemas/userSchema";
+import type { Warn } from "@/schemas/user";
 
 const options = {
   user: createUserOption({
@@ -15,7 +15,7 @@ const options = {
   description: "Ver todos los warns de un usuario",
 })
 @Options(options)
-export class ListCommand extends SubCommand {
+export class ListWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user } = ctx.options;
     const userRepository = ctx.db.repositories.user;

@@ -8,7 +8,7 @@ import {
   SubCommand,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import type { Warn } from "@/schemas/userSchema";
+import type { Warn } from "@/schemas/user";
 
 const options = {
   user: createUserOption({
@@ -26,7 +26,7 @@ const options = {
   description: "Añadir un warn a un usuario",
 })
 @Options(options)
-export class AddCommand extends SubCommand {
+export class AddWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user, reason } = ctx.options;
     const userRepository = ctx.db.repositories.user;
