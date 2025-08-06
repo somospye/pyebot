@@ -25,7 +25,7 @@ const options = {
   description: "Remover un warn a un usuario",
 })
 @Options(options)
-export class RemoveWarnCommand extends SubCommand {
+export default class RemoveWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user, warn_id } = ctx.options;
     const userRepository = ctx.db.repositories.user;

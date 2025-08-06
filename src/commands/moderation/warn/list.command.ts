@@ -15,7 +15,7 @@ const options = {
   description: "Ver todos los warns de un usuario",
 })
 @Options(options)
-export class ListWarnCommand extends SubCommand {
+export default class ListWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user } = ctx.options;
     const userRepository = ctx.db.repositories.user;
