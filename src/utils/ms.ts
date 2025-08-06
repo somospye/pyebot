@@ -122,9 +122,3 @@ function longUnitName(short: string, value: number): string {
   const base = unitMap[short] ?? short;
   return value === 1 ? base : `${base}s`;
 }
-
-export default {
-  parse,
-  format,
-  isValid,
-};

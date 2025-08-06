@@ -2,5 +2,6 @@ pre-commit:
   parallel: true
   jobs:
     - name: lint staged
-      run: pnpm exec lint-staged
+      run: >
+        [ -n "$SKIP_LINT_STAGED" ] && echo "Skipping hook in favor of env variable..." || pnpm exec lint-staged
 
