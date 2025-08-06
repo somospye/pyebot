@@ -1,4 +1,4 @@
-import { Command, Declare } from "seyfert";
+import { AutoLoad, Command, Declare } from "seyfert";
 
 @Declare({
   name: "warn",
