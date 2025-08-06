@@ -21,7 +21,7 @@ export class ListWarnCommand extends SubCommand {
     const { user } = ctx.options;
     const userRepository = ctx.db.repositories.user;
 
-    const userDb = await userRepository.get(user.id, false);
+    const userDb = await userRepository.get(user.id);
     const warns = userDb.warns ?? [];
 
     if (warns.length === 0) {

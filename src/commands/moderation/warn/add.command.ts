@@ -31,10 +31,7 @@ export class AddWarnCommand extends SubCommand {
     const { user, reason = "Razón no especificada" } = ctx.options;
     const userRepository = ctx.db.repositories.user;
 
-    const hasUser = await userRepository.has(user.id);
-    if (!hasUser) userRepository.create(user.id);
-
-    const userDb = await userRepository.get(user.id, false);
+    const userDb = await userRepository.get(user.id);
     const warnsCount = userDb.warns?.length ?? 0;
 
     const warn: Warn = {
