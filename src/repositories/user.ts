@@ -1,11 +1,16 @@
 import { eq } from "drizzle-orm";
+import type { If } from "seyfert/lib/common";
 import { db } from "@/db";
 import { type User, users, type Warn } from "@/schemas/user";
 
 export async function create(discordId: string) {
-  return await db.insert(users).values({
-    id: discordId,
-  });
+  return await db
+    .insert(users)
+    .values({
+      id: discordId,
+    })
+    .returning()
+    .then((x) => x[0]);
 }
 
 export async function has(discordId: string): Promise<boolean> {
@@ -18,14 +23,20 @@ export async function has(discordId: string): Promise<boolean> {
   return result.length > 0;
 }
 
-export async function get(discordId: string): Promise<User> {
+export async function get<T extends boolean = false>(
+  discordId: string,
+  nullIfNotExist: T,
+): Promise<If<T, User | null, User>> {
   const result = await db
     .select()
     .from(users)
     .where(eq(users.id, discordId))
-    .limit(1);
+    .limit(1)
+    .then((x) => x[0]);
 
-  return result[0];
+  if (result) return result;
+  if (!result && nullIfNotExist) return null as never;
+  return create(discordId);
 }
 
 export async function addWarn(discordId: string, newWarn: Warn) {

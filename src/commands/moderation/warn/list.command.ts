@@ -1,6 +1,7 @@
-import type { Guild, GuildCommandContext } from "seyfert";
+import type { GuildCommandContext } from "seyfert";
 import { createUserOption, Declare, Embed, Options, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
+import { client } from "@/index";
 import type { Warn } from "@/schemas/user";
 
 const options = {
@@ -20,44 +21,30 @@ export class ListWarnCommand extends SubCommand {
     const { user } = ctx.options;
     const userRepository = ctx.db.repositories.user;
 
-    const guild = await ctx.guild();
-
-    const exists = await userRepository.has(user.id);
-    if (!exists) {
-      await userRepository.create(user.id);
-      return ctx.write({ content: "✗ El usuario no tiene warns para ver." });
-    }
-
-    const userDb = await userRepository.get(user.id);
+    const userDb = await userRepository.get(user.id, false);
     const warns = userDb.warns ?? [];
 
     if (warns.length === 0) {
       return ctx.write({ content: "✗ El usuario no tiene warns para ver." });
     }
 
-    const warnsText = await this.formatWarns(warns, guild);
+    const warnsText = await this.formatWarns(warns, ctx.guildId);
 
     const embed = new Embed({
       title: "Lista de warns",
-      description: `**${user.username}** tiene ${warns.length} warns.\n\n${warnsText}`,
+      description: `**${user.username}** tiene ${warns.length} warn${warns.length === 1 ? "" : "s"}.\n\n${warnsText}`,
       color: EmbedColors.Blue,
     });
 
     await ctx.write({ embeds: [embed] });
   }
 
-  private async formatWarns(
-    warns: Warn[],
-    guild: Awaited<Guild<"cached" | "api">>,
-  ): Promise<string> {
-    const fetchMemberName = async (id: string) => {
-      try {
-        const member = await guild.members.fetch(id);
-        return member.name;
-      } catch {
-        return "Desconocido";
-      }
-    };
+  private async formatWarns(warns: Warn[], guildId: string): Promise<string> {
+    const fetchMemberName = async (id: string) =>
+      await client.members
+        .fetch(guildId, id)
+        .then((x) => x.name)
+        .catch(() => "Desconocido");
 
     const warnEntries = await Promise.all(
       warns.map(async (warn) => {

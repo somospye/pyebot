@@ -26,42 +26,36 @@ const options = {
   description: "Banear a un usuario del servidor",
   defaultMemberPermissions: ["BanMembers"],
   botPermissions: ["BanMembers"],
+  contexts: ["Guild"],
+  integrationTypes: ["GuildInstall"],
 })
 @Options(options)
 export default class BanCommand extends Command {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const guild = await ctx.guild();
+    const { user, reason = "Razón no especificada" } = ctx.options;
 
-    if (ctx.author.id === ctx.options.user.id)
+    if (ctx.author.id === user.id)
       return ctx.write({
         content: "✗ No podés banearte a vos mismo.",
       });
 
-    const memberHighestRole = ctx.member
-      ? await ctx.member.roles.highest()
-      : undefined;
     const targetMember =
-      ctx.options.user instanceof InteractionGuildMember
-        ? ctx.options.user
-        : undefined;
-    const targetHighestRole = targetMember
-      ? await targetMember.roles.highest()
-      : undefined;
+      user instanceof InteractionGuildMember ? user : undefined;
 
-    if (
-      memberHighestRole &&
-      targetHighestRole &&
-      memberHighestRole.position <= targetHighestRole.position
-    )
+    if (!targetMember)
+      return ctx.write({
+        content: "✗ No se pudo encontrar al miembro a banear en el servidor.",
+      });
+
+    if (!(await targetMember.moderatable()))
       return ctx.write({
         content:
           "✗ No podés banear a un usuario con un rol igual o superior al tuyo.",
       });
 
-    const reasonOption = ctx.options.reason || "Razón no especificada";
-    const reason = `${reasonOption} | Baneado por ${ctx.author.username}`;
+    const text = `${reason} | Baneado por ${ctx.author.username}`;
 
-    await guild.bans.create(ctx.options.user.id, {}, reason);
+    await ctx.client.bans.create(ctx.guildId, user.id, {}, text);
 
     // TODO: logging
 
@@ -70,7 +64,7 @@ export default class BanCommand extends Command {
       description: `
             ✓ El usuario **${ctx.options.user.username}** fue baneado correctamente.
             
-            **Razón:** ${reasonOption}
+            **Razón:** ${reason}
             `,
       color: EmbedColors.Green,
       footer: {

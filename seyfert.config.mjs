@@ -1,7 +1,10 @@
+// @ts-check
 import "dotenv/config";
 import { config } from "seyfert";
 
-if (!process.env.TOKEN) throw Error("missing 'TOKEN' env variable");
+const { TOKEN } = process.env;
+
+if (!TOKEN) throw Error("missing 'TOKEN' env variable");
 
 export default config.bot({
   locations: {
@@ -9,6 +12,6 @@ export default config.bot({
     commands: "commands",
     events: "events",
   },
-  token: process.env.TOKEN ?? "",
+  token: TOKEN,
   intents: ["Guilds", "GuildMessages", "MessageContent"], // faltan agregar más intents
 });

@@ -1,23 +1,23 @@
 import { createEvent } from "seyfert";
 import { processMessage } from "@/services/ai";
-import { sendPaginatedMessages } from "@/utils/messages";
 import { analyzeUserMessage } from "@/services/security";
+import { sendPaginatedMessages } from "@/utils/messages";
 
 export default createEvent({
   data: { name: "messageCreate" },
-  async run(message) {
-    if (message.author?.bot) return;
+  async run(message, client) {
+    if (message.author?.bot || message.webhookId) return;
 
     await analyzeUserMessage(message);
 
     const { author, content } = message;
     const wasMentioned = message.mentions.users.find(
-      (user) => user.id === process.env.CLIENT_ID,
+      (user) => user.id === client.botId,
     );
     const shouldReply =
       wasMentioned ||
       (message.referencedMessage &&
-        message?.referencedMessage.author.id === process.env.CLIENT_ID);
+        message?.referencedMessage.author.id === client.botId);
 
     if (!shouldReply) return;
 

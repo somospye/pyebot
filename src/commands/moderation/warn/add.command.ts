@@ -28,19 +28,17 @@ const options = {
 @Options(options)
 export class AddWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const { user, reason } = ctx.options;
+    const { user, reason = "Razón no especificada" } = ctx.options;
     const userRepository = ctx.db.repositories.user;
 
     const hasUser = await userRepository.has(user.id);
     if (!hasUser) userRepository.create(user.id);
 
-    const userDb = await userRepository.get(user.id);
-    const warnsCount = userDb.warns ? userDb.warns.length : 0;
-
-    const finalReason = reason || "Razón no especificada";
+    const userDb = await userRepository.get(user.id, false);
+    const warnsCount = userDb.warns?.length ?? 0;
 
     const warn: Warn = {
-      reason: finalReason,
+      reason,
       warn_id: warnsCount + 1,
       moderator: ctx.author.id,
       timestamp: new Date().toISOString(),
@@ -53,7 +51,7 @@ export class AddWarnCommand extends SubCommand {
       description: `
             ✓ Se añadió un warn al usuario **${user.username}**.
             
-            **Razón:** ${finalReason}
+            **Razón:** ${reason}
             `,
       color: EmbedColors.Green,
       footer: {

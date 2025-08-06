@@ -1,7 +1,7 @@
 import type { GuildCommandContext } from "seyfert";
 import { Command, createStringOption, Declare, Embed, Options } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { isValid, parse } from "@/utils/ms";
+import { parse } from "@/utils/ms";
 
 const options = {
   time: createStringOption({
@@ -13,13 +13,14 @@ const options = {
 @Declare({
   name: "selfmute",
   description: "Darse mute a sí mismo",
+  contexts: ["Guild"],
+  integrationTypes: ["GuildInstall"],
 })
 @Options(options)
 export default class SelfMuteCommand extends Command {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const { time } = ctx.options;
-
-    if (!isValid(time))
+    const time = parse(ctx.options.time);
+    if (time === undefined)
       return await ctx.write({
         content:
           "✗ Formato de tiempo invalido. **Ejemplos válidos:** 10min, 1h, 3d, 2m, 5s.",
@@ -31,8 +32,7 @@ export default class SelfMuteCommand extends Command {
         content: "✗ No tengo los permisos suficientes.",
       });
 
-    const milliseconds = parse(time) || 0;
-    ctx.member.timeout(milliseconds, `Comando self-mute | Tiempo: ${time}`);
+    ctx.member.timeout(time, `Comando self-mute | Tiempo: ${time}`);
 
     const successEmbed = new Embed({
       title: "Self mute",
