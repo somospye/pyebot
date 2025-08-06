@@ -1,12 +1,12 @@
-<img src="https://github.com/somospye/.github/blob/ae93c5b2b767d76afb9255475acfabd2a25a3b76/assets/pyelogo.gif" width="150px" />
+---
 
-# Comunidad PyE -  PyEBot
+<img src="https://github.com/somospye/.github/blob/e0ab2bf61b679d7746e5c1114baa5f37c354d778/assets/pyebanner.png" />
 
 Somos la comunidad hispana más grande de **programación** y **estudio** en Discord. [¡Siéntase bienvenido/a!](https://discord.gg/programacion) 😄
 
 ---
 
-Este repositorio contiene el proyecto de código abierto de PyEBot, nuestro bot oficial de Discord. Construido con el framework [Seyfert](https://seyfert.dev), **¡y la contribución de todo aquel que quiera formar parte!**
+Este repositorio contiene el proyecto de código abierto de **PyEBot**, nuestro bot oficial de Discord. Construido con el framework [Seyfert](https://seyfert.dev), **¡y la contribución de todo aquel que quiera formar parte!**
 
 ---
 
