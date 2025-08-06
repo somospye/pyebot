@@ -25,7 +25,7 @@ export async function has(discordId: string): Promise<boolean> {
 
 export async function get<T extends boolean = false>(
   discordId: string,
-  nullIfNotExist: T,
+  nullIfNotExist?: T,
 ): Promise<If<T, User | null, User>> {
   const result = await db
     .select()
