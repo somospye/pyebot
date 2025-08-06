@@ -1,9 +1,10 @@
 import "module-alias/register";
+
 import type { ParseClient } from "seyfert";
 import { Client, extendContext } from "seyfert";
 import { db } from "@/db";
-import { repositories } from "@/repositories";
-import { schemas } from "@/schemas";
+import * as repositories from "@/repositories";
+import * as schemas from "@/schemas";
 
 const context = extendContext((_) => {
   return {

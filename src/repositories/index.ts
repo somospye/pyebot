@@ -1,5 +1,1 @@
-import * as user from "./user";
-
-export const repositories = {
-  user,
-};
+export * as user from "./user";

@@ -4,12 +4,12 @@ import { sendPaginatedMessages } from "@/utils/messages";
 
 export default createEvent({
   data: { name: "messageCreate" },
-  async run(message) {
+  async run(message, client) {
     if (message.author?.bot) return;
 
     const { author, content } = message;
     const wasMentioned = message.mentions.users.find(
-      (user) => user.id === process.env.CLIENT_ID,
+      (user) => user.id === client.applicationId,
     );
     const shouldReply =
       wasMentioned ||
