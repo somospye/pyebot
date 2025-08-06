@@ -1,12 +1,8 @@
-import { Command, Declare, Options } from "seyfert";
-
-import { AddWarnCommand } from "./add.command";
-import { ListWarnCommand } from "./list.command";
-import { RemoveWarnCommand } from "./remove.command";
+import { Command, Declare } from "seyfert";
 
 @Declare({
   name: "warn",
   description: "Manejar los warns de los usuarios",
 })
-@Options([AddWarnCommand, RemoveWarnCommand, ListWarnCommand])
+@AutoLoad()
 export default class WarnParent extends Command {}
