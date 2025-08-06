@@ -1,11 +1,14 @@
 import { createEvent } from "seyfert";
 import { processMessage } from "@/services/ai";
 import { sendPaginatedMessages } from "@/utils/messages";
+import { analyzeUserMessage } from "@/services/security";
 
 export default createEvent({
   data: { name: "messageCreate" },
   async run(message) {
     if (message.author?.bot) return;
+
+    await analyzeUserMessage(message);
 
     const { author, content } = message;
     const wasMentioned = message.mentions.users.find(
