@@ -6,7 +6,7 @@ import { Modality } from "@google/genai";
 
 @Declare({
   name: "chiste",
-  description: "Genera un chiste para programadores",
+  description: "Genera un chiste",
 })
 export default class JokeCommand extends Command {
   async run(ctx: CommandContext) {
