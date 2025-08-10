@@ -1,5 +1,5 @@
 import {
-  type Content,
+  type Content, GenerateContentParameters,
   type GenerateContentResponse,
   GoogleGenAI,
   Modality,
@@ -54,28 +54,28 @@ export const processMessage = async ({
 };
 
 export const callGeminiAI = async (
-  messages: Message[],
+  messages: Message[], options: Omit<GenerateContentParameters, "contents"> = {
+    model: "gemini-2.0-flash-preview-image-generation",
+    config: {
+      safetySettings: SAFETY_SETTINGS,
+      candidateCount: 1,
+      maxOutputTokens: 800,
+      temperature: 0.68,
+      topK: 35,
+      topP: 0.77,
+      responseModalities: [Modality.TEXT, Modality.IMAGE],
+    }
+  },
 ): Promise<AIResponse> => {
   const contents: Content[] = messages.map((msg) => ({
     role: msg.role,
     parts: [{ text: msg.content }],
   }));
 
-  try {
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-preview-image-generation",
-      contents,
-      config: {
-        safetySettings: SAFETY_SETTINGS,
-        candidateCount: 1,
-        maxOutputTokens: 800,
-        temperature: 0.68,
-        topK: 35,
-        topP: 0.77,
-        responseModalities: [Modality.TEXT, Modality.IMAGE],
-      },
-    });
+  const params = { contents, ...options };
 
+  try {
+    const response = await genAI.models.generateContent(params);
     return await processResponse(response);
   } catch (e) {
     console.error("[callGeminiAI] Error:", e);
