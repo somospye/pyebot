@@ -8,7 +8,7 @@ import { Modality } from "@google/genai";
   name: "chiste",
   description: "Genera un chiste para programadores",
 })
-export default class MemeCommand extends Command {
+export default class JokeCommand extends Command {
   async run(ctx: CommandContext) {
     await ctx.deferReply();
 
