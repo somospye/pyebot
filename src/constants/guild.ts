@@ -1,0 +1,74 @@
+export const GUILD_ID = "768278151435386900";
+
+export const CHANNELS_ID = {
+  // General channels
+  help: "916353103534632964",
+  general: "768329192131526686",
+  resources: "924436818718494740",
+  memes: "783188322087993346",
+  mudae: "875535411924062279",
+  starboard: "930504113718972516",
+  suggestions: "784608909817937920",
+  challenges: "1141493769699606528",
+  announcements: "797974300283240489",
+  invitations: "1169865263718600704",
+  studyGroups: "1249222442199814257",
+  linkedin: "1344535477268774912",
+
+  // Community topics
+  politicalPhilosophy: "847920994156806194",
+  casinoPye: "875535411924062279",
+
+  // Job & project offers
+  jobOffers: "793661563705360394",
+  serviceOffers: "901578179431530496",
+  unpaidProjects: "785303382314844160",
+  openSource: "1249218089430548605",
+
+  // Information & rules
+  rules: "845314420494434355",
+  roles: "999427534670278667",
+
+  // Programming & tech chats
+  programmersChat: "807385882868580392",
+
+  // Forums
+  hardware: "1019727139173576814",
+  linux: "1019789271386837102",
+  go: "1019729125310734366",
+  databases: "1019771485948227614",
+  networking: "1019773997296123944",
+  cybersecurity: "1019776581599768719",
+  windows: "1019719246655258705",
+  electronics: "1019750681608994825",
+  gameDev: "1019734514202857592",
+  generalHelp: "1019686175490986124",
+  javascript: "1122388627557732362",
+  rust: "1122399598107967580",
+  python: "1122390683106414652",
+  cSharpDotNet: "1122397677066395689",
+  cCpp: "1122396855775539320",
+  htmlCss: "1122376272450945025",
+  c: "1122393447698014271",
+  php: "1122391769775079505",
+  javaKotlin: "1122390294973915176",
+  mathematics: "1305675508637499493",
+  physicsChemistry: "867526069875507240",
+  tickets: "865047053884457012",
+
+  // Staff channels
+  notifications: "925121655578173440",
+  pointsLog: "932871373280395314",
+  generalLogs: "1145160830741135470",
+  messageLogs: "844385486469988404",
+  voiceLogs: "952655229944467496",
+  ticketLogs: "904954213501632542",
+  banSanctions: "844385995352047646",
+  staff: "1289417254894702644",
+  moderators: "1289416349860368425",
+
+  // Categories
+  categoryStaff: "837035918187298836",
+  categoryCommunity: "781678453309177877",
+  categoryForums: "1290372079279145092",
+};
