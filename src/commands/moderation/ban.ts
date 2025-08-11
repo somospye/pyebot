@@ -17,7 +17,7 @@ const options = {
   }),
   reason: createStringOption({
     description: "Razón del baneo",
-    required: false,
+    required: true,
   }),
 };
 
