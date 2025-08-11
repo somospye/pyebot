@@ -17,7 +17,7 @@ const options = {
   }),
   reason: createStringOption({
     description: "Razón del baneo",
-    required: false,
+    required: true,
   }),
 };
 
@@ -32,7 +32,7 @@ const options = {
 @Options(options)
 export default class BanCommand extends Command {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const { user, reason = "Razón no especificada" } = ctx.options;
+    const { user, reason } = ctx.options;
 
     if (ctx.author.id === user.id)
       return ctx.write({
