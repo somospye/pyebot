@@ -1,11 +1,14 @@
 import { createEvent } from "seyfert";
 import { processMessage } from "@/services/ai";
 import { sendPaginatedMessages } from "@/utils/messages";
+import { AutoModSystem } from "@/systems/automod";
 
 export default createEvent({
   data: { name: "messageCreate" },
   async run(message, client) {
     if (message.author?.bot) return;
+
+    await AutoModSystem.getInstance(client).analyzeUserMessage(message);
 
     const { author, content } = message;
     const wasMentioned = message.mentions.users.find(
