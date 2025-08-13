@@ -146,3 +146,5 @@ drizzle
 
 # nix
 .direnv
+cache_automod.json
+eng.traineddata
