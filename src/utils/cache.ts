@@ -20,7 +20,8 @@ export class Cache {
   private persistPath?: string;
 
   constructor(options: CacheOptions = {}) {
-    this.persistPath = options.persistPath ?? path.join(__dirname, "cache.json");
+    this.persistPath =
+      options.persistPath ?? path.join(__dirname, "cache.json");
     const persistInterval = options.persistIntervalMs ?? 5 * 60 * 1000;
     const cleanupInterval = options.cleanupIntervalMs ?? 60 * 60 * 1000;
 

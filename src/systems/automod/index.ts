@@ -2,7 +2,7 @@ import { UsingClient, type Message } from "seyfert";
 import { spamFilterList, scamFilterList } from "@/constants/automod";
 import { phash } from "@/utils/phash";
 import sharp from "sharp";
-import { createWorker } from 'tesseract.js';
+import { createWorker } from "tesseract.js";
 import { CHANNELS_ID } from "@/constants/guild";
 import { Cache } from "@/utils/cache";
 
@@ -16,7 +16,7 @@ export class AutoModSystem {
   private tempStorage = new Cache({
     persistPath: "./cache_automod.json",
     persistIntervalMs: 5 * 60 * 1000,
-    cleanupIntervalMs: 60 * 60 * 1000
+    cleanupIntervalMs: 60 * 60 * 1000,
   });
 
   constructor(client: UsingClient) {
@@ -37,13 +37,19 @@ export class AutoModSystem {
     for (const spamFilter of spamFilterList) {
       if (spamFilter.filter.test(messageContent)) {
         if (spamFilter.mute) {
-          await message.member?.timeout?.(FIVE_MINUTES, "Contenido malisioso detectado");
+          await message.member?.timeout?.(
+            FIVE_MINUTES,
+            "Contenido malisioso detectado",
+          );
         } else {
           // TODO: filtros sin mute
         }
 
         if (spamFilter.warnMessage) {
-          await this.notifySuspiciousActivity(spamFilter.warnMessage, message.url);
+          await this.notifySuspiciousActivity(
+            spamFilter.warnMessage,
+            message.url,
+          );
         }
 
         return true;
@@ -59,7 +65,7 @@ export class AutoModSystem {
       if (!attachment.contentType?.startsWith("image")) continue;
 
       const response = await fetch(attachment.url);
-      if (!response.ok) throw new Error('Failed to download image');
+      if (!response.ok) throw new Error("Failed to download image");
 
       const imageBuffer = await response.arrayBuffer();
 
@@ -68,7 +74,10 @@ export class AutoModSystem {
       const cachedResult = await this.tempStorage.get(cacheKey);
 
       if (cachedResult === "unsafe") {
-        await this.notifySuspiciousActivity(`[SECURITY] Imagen rara ${message.author.tag}: ${attachment.url}`, message.url);
+        await this.notifySuspiciousActivity(
+          `[SECURITY] Imagen rara ${message.author.tag}: ${attachment.url}`,
+          message.url,
+        );
         await message.delete();
         return true;
       }
@@ -76,8 +85,11 @@ export class AutoModSystem {
       const isUnsafeImage = await this.analyzeImage(imageBuffer);
 
       if (isUnsafeImage) {
-        await this.tempStorage.set(cacheKey, 'unsafe', ONE_WEEK);
-        await this.notifySuspiciousActivity(`[SECURITY] Imagen rara ${message.author.tag}: ${attachment.url}`, message.url);
+        await this.tempStorage.set(cacheKey, "unsafe", ONE_WEEK);
+        await this.notifySuspiciousActivity(
+          `[SECURITY] Imagen rara ${message.author.tag}: ${attachment.url}`,
+          message.url,
+        );
         await message.delete();
         return true;
       }
@@ -96,17 +108,26 @@ export class AutoModSystem {
 
   private async analyzeImage(buffer: ArrayBuffer) {
     const image = await this.preprocessImage(buffer);
-    const worker = await createWorker('eng');
-    const { data: { text } } = await worker.recognize(image);
+    const worker = await createWorker("eng");
+    const {
+      data: { text },
+    } = await worker.recognize(image);
     await worker.terminate();
 
     const lowerCaseText = text.toLowerCase();
     return scamFilterList.find((filter: RegExp) => filter.test(lowerCaseText));
   }
 
-  private async notifySuspiciousActivity(warning: string, referenceUrl: string | null) {
-    await this.client.messages.write(CHANNELS_ID.staff, {
-      content: `**Advertencia:** ${warning}. ${referenceUrl ?? ""}`,
-    }).catch((err: Error) => console.error("AutoModSystem: Error al advertir al staff:", err));
+  private async notifySuspiciousActivity(
+    warning: string,
+    referenceUrl: string | null,
+  ) {
+    await this.client.messages
+      .write(CHANNELS_ID.staff, {
+        content: `**Advertencia:** ${warning}. ${referenceUrl ?? ""}`,
+      })
+      .catch((err: Error) =>
+        console.error("AutoModSystem: Error al advertir al staff:", err),
+      );
   }
 }

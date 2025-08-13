@@ -97,8 +97,4 @@ const distance = (a: string, b: string) => {
   return count;
 };
 
-export {
-  distance,
-  phash,
-};
-
+export { distance, phash };

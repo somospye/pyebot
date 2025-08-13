@@ -1,5 +1,6 @@
 import {
-  type Content, GenerateContentParameters,
+  type Content,
+  GenerateContentParameters,
   type GenerateContentResponse,
   GoogleGenAI,
   Modality,
@@ -54,7 +55,8 @@ export const processMessage = async ({
 };
 
 export const callGeminiAI = async (
-  messages: Message[], options: Omit<GenerateContentParameters, "contents"> = {
+  messages: Message[],
+  options: Omit<GenerateContentParameters, "contents"> = {
     model: "gemini-2.0-flash-preview-image-generation",
     config: {
       safetySettings: SAFETY_SETTINGS,
@@ -64,7 +66,7 @@ export const callGeminiAI = async (
       topK: 35,
       topP: 0.77,
       responseModalities: [Modality.TEXT, Modality.IMAGE],
-    }
+    },
   },
 ): Promise<AIResponse> => {
   const contents: Content[] = messages.map((msg) => ({
