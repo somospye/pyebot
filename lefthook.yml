@@ -24,21 +24,30 @@ commit-msg:
     conventional-commits:
       tags: commit-msg
       run: |
-        # Get commit message - lefthook provides it via stdin or we can get it from git log
-        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OS" == "Windows_NT" ]]; then
-          # Windows - get the commit message from git
+        # Detect OS
+        is_windows=false
+        if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OS" == "Windows_NT" ]]; then
+          is_windows=true
+        fi
+
+        if $is_windows; then
+          # Windows - get commit message from git or Lefthook env
           commit_msg=$(git log --format=%B -n 1 HEAD 2>/dev/null || echo "")
           if [ -z "$commit_msg" ]; then
-            # If no commit yet, try to get from the temp file or environment
             commit_msg="$LEFTHOOK_COMMIT_MSG"
           fi
-          
+
+          # Escape single quotes for Powershell safely
+          commit_msg_escaped=${commit_msg//\'/\'\'}
+
           powershell -Command "
-            \$commitMsg = '$commit_msg'.Trim()
+            \$commitMsg = '$commit_msg_escaped'.Trim()
             if (\$commitMsg -eq '') {
               Write-Host '⚠️  Empty commit message, skipping validation'
               exit 0
             }
+
+            # Begin your original Write-Host checks (unchanged)
             \$pattern = '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?: .{1,50}'
             if (\$commitMsg -notmatch \$pattern) {
               Write-Host '❌ Invalid commit message format!'
@@ -48,12 +57,14 @@ commit-msg:
               Write-Host 'Your message: ' + \$commitMsg
               exit 1
             }
+
             if (\$commitMsg.Length -gt 72) {
               Write-Host '❌ Commit message too long! Keep it under 72 characters.'
               Write-Host 'Current length: ' + \$commitMsg.Length
               Write-Host 'Your message: ' + \$commitMsg
               exit 1
             }
+
             \$description = \$commitMsg -replace '^[a-z]+(\([^)]+\))?: ', ''
             if (\$description -match '^(added|fixed|updated|changed|removed|created)') {
               Write-Host '⚠️  Use imperative mood: add not added, fix not fixed'
@@ -61,6 +72,7 @@ commit-msg:
               Write-Host 'Your message: ' + \$commitMsg
               exit 1
             }
+
             Write-Host '✅ Commit message follows Conventional Commits specification'
           "
         else
@@ -102,34 +114,34 @@ commit-msg:
             echo "⚠️  Empty commit message or comment, skipping validation"
             exit 0
           fi
-          
-          # Check conventional commit format
+
+          # Validate Conventional Commit format
           if ! echo "$commit_msg" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?: .{1,50}'; then
             echo "❌ Invalid commit message format!"
             echo "Format: <type>[optional scope]: <description>"
             echo "Types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test"
             echo "Example: feat(auth): add login functionality"
-            echo "Your message: $commit_msg"
+            echo "Your message: \"$commit_msg\""
             exit 1
           fi
-          
-          # Check message length
+
+          # Length check
           if [ ${#commit_msg} -gt 72 ]; then
             echo "❌ Commit message too long! Keep it under 72 characters."
             echo "Current length: ${#commit_msg}"
-            echo "Your message: $commit_msg"
+            echo "Your message: \"$commit_msg\""
             exit 1
           fi
-          
-          # Check for imperative mood in description
+
+          # Imperative mood check
           description=$(echo "$commit_msg" | sed -E 's/^[a-z]+(\([^)]+\))?: //')
           if echo "$description" | grep -qE '^(added|fixed|updated|changed|removed|created)'; then
             echo "⚠️  Use imperative mood: 'add' not 'added', 'fix' not 'fixed'"
             echo "Example: 'feat: add user authentication' not 'feat: added user authentication'"
-            echo "Your message: $commit_msg"
+            echo "Your message: \"$commit_msg\""
             exit 1
           fi
-          
+
           echo "✅ Commit message follows Conventional Commits specification"
         fi
       fail_text: "Commit message doesn't follow Conventional Commits specification."
