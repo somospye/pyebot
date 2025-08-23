@@ -1,0 +1,30 @@
+config:
+  default: start
+  concurrent: true
+
+tasks:
+  install:
+    cmd: ["pnpm install", "pnpm approve-builds"]
+    desc: Install dependencies
+    concurrent: false
+
+  start:
+    cmd: ["rm -rf commands.json dist", "pnpm start"]
+    desc: Start the bot
+    # deps: [db]
+    watch: ["src/**"]
+    watch_debounce: 500
+    # watch_propagate: true
+    concurrent: false
+    env:
+      NODE_ENV: production
+
+  db:
+    cmd: "docker-compose up -d"
+    desc: Start the database
+    concurrent: true
+  
+  drizzle:
+    cmd: ["pnpm drizzle-kit generate", "pnpm drizzle-kit migrate"]
+    desc: Run drizzle migrations
+    concurrent: true
