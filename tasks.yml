@@ -1,3 +1,11 @@
+# this is used with https://github.com/nehu3n/tazk
+
+# for example:
+#
+# tazk    # executes tazk start (default task)
+# tazk db     # starts the database
+# tazk --list     # list all tasks
+
 config:
   default: start
   concurrent: true
