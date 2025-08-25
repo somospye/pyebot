@@ -56,7 +56,7 @@ export default class RestrictCommand extends Command {
       });
     */
 
-    const text = `${reason} | Restringido por ${ctx.author.username}`;
+    // const text = `${reason} | Restringido por ${ctx.author.username}`;
 
     const RESTRICTED_JOBS_ROLE_ID = "984278721055830047";
     const RESTRICTED_FORUMS_ROLE_ID = "1385798023485063369";
