@@ -1,12 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import path from "path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 export interface CacheOptions {
-  /** Ruta donde se guardará el archivo de persistencia (opcional) */
   persistPath?: string;
-  /** Intervalo para persistir a disco en ms (por defecto: 5 min) */
   persistIntervalMs?: number;
-  /** Intervalo para limpiar expirados en ms (por defecto: 1 hora) */
   cleanupIntervalMs?: number;
 }
 
@@ -15,8 +12,8 @@ interface CacheEntry<T> {
   expiresAt: number;
 }
 
-export class Cache {
-  private store = new Map<string, CacheEntry<any>>();
+export class Cache<TValue = unknown> {
+  private store = new Map<string, CacheEntry<TValue>>();
   private persistPath?: string;
 
   constructor(options: CacheOptions = {}) {
@@ -25,11 +22,10 @@ export class Cache {
     const persistInterval = options.persistIntervalMs ?? 5 * 60 * 1000;
     const cleanupInterval = options.cleanupIntervalMs ?? 60 * 60 * 1000;
 
-    // Cargar desde disco si existe
     if (this.persistPath && existsSync(this.persistPath)) {
       try {
         const raw = JSON.parse(readFileSync(this.persistPath, "utf-8"));
-        for (const [key, entry] of Object.entries<CacheEntry<any>>(raw)) {
+        for (const [key, entry] of Object.entries<CacheEntry<TValue>>(raw)) {
           if (Date.now() < entry.expiresAt) {
             this.store.set(key, entry);
           }
@@ -39,26 +35,24 @@ export class Cache {
       }
     }
 
-    // Persistir automáticamente
     if (this.persistPath) {
       setInterval(() => this.persist(), persistInterval);
     }
 
-    // Limpieza automática
     setInterval(() => this.cleanup(), cleanupInterval);
   }
 
-  async get<T = any>(key: string): Promise<T | null> {
+  async get(key: string): Promise<TValue | null> {
     const entry = this.store.get(key);
     if (!entry) return null;
     if (Date.now() > entry.expiresAt) {
       this.store.delete(key);
       return null;
     }
-    return entry.value as T;
+    return entry.value;
   }
 
-  async set<T = any>(key: string, value: T, ttlMs: number): Promise<void> {
+  async set(key: string, value: TValue, ttlMs: number): Promise<void> {
     this.store.set(key, { value, expiresAt: Date.now() + ttlMs });
   }
 
@@ -68,7 +62,7 @@ export class Cache {
 
   private persist(): void {
     if (!this.persistPath) return;
-    const obj: Record<string, CacheEntry<any>> = {};
+    const obj: Record<string, CacheEntry<TValue>> = {};
     for (const [key, entry] of this.store.entries()) {
       obj[key] = entry;
     }
