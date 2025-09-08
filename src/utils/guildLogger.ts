@@ -1,10 +1,18 @@
+import { Embed, type UsingClient } from "seyfert";
+import type { ColorResolvable } from "seyfert/lib/common";
+import type { APIEmbedField } from "seyfert/lib/types";
 import { CHANNELS_ID } from "@/constants/guild";
-import type { UsingClient, Embed } from "seyfert";
 
-/*
-it can be improved so that the generation of embeds is dynamic and does not depend on 
-building it externally, but for now i'm not going to do that :)
-*/
+type EmbedOptions = {
+  title?: string;
+  description?: string;
+  color?: ColorResolvable;
+  fields?: APIEmbedField[];
+  footer?: { text: string; iconUrl?: string };
+  thumbnail?: string;
+  image?: string;
+  url?: string;
+};
 
 export class GuildLogger {
   private client!: UsingClient;
@@ -14,23 +22,49 @@ export class GuildLogger {
     return this;
   }
 
-  async messageLog(embed: Embed) {
+  private buildEmbed(options: EmbedOptions): Embed {
+    const embed = new Embed()
+      .setTimestamp()
+      .setColor(options.color ?? "Blurple");
+
+    if (options.title) embed.setTitle(options.title);
+    if (options.description) embed.setDescription(options.description);
+    if (options.fields) embed.setFields(options.fields);
+    if (options.footer) embed.setFooter(options.footer);
+    if (options.thumbnail) embed.setThumbnail(options.thumbnail);
+    if (options.image) embed.setImage(options.image);
+    if (options.url) embed.setURL(options.url);
+
+    return embed;
+  }
+
+  async messageLog(options: EmbedOptions) {
+    const embed = this.buildEmbed(options);
     this.client.messages.write(CHANNELS_ID.messageLogs, { embeds: [embed] });
   }
 
-  async voiceLog(embed: Embed) {
+  async voiceLog(options: EmbedOptions) {
+    const embed = this.buildEmbed(options);
     this.client.messages.write(CHANNELS_ID.voiceLogs, { embeds: [embed] });
   }
 
-  async ticketLog(embed: Embed) {
+  async ticketLog(options: EmbedOptions) {
+    const embed = this.buildEmbed(options);
     this.client.messages.write(CHANNELS_ID.ticketLogs, { embeds: [embed] });
   }
 
-  async pointLog(embed: Embed) {
+  async pointLog(options: EmbedOptions) {
+    const embed = this.buildEmbed(options);
     this.client.messages.write(CHANNELS_ID.pointsLog, { embeds: [embed] });
   }
 
-  async generalLog(embed: Embed) {
+  async generalLog(options: EmbedOptions) {
+    const embed = this.buildEmbed(options);
     this.client.messages.write(CHANNELS_ID.generalLogs, { embeds: [embed] });
+  }
+
+  async banSanctionLog(options: EmbedOptions) {
+    const embed = this.buildEmbed(options);
+    this.client.messages.write(CHANNELS_ID.banSanctions, { embeds: [embed] });
   }
 }
