@@ -9,6 +9,8 @@ import {
   Options,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
+import { MessageFlags } from "seyfert/lib/types";
+import { CHANNELS_ID } from "@/constants/guild";
 import { isValid, parse } from "@/utils/ms";
 
 const options = {
@@ -42,12 +44,14 @@ export default class MuteCommand extends Command {
     if (!isValid(time))
       return await ctx.write({
         content:
-          "✗ Formato de tiempo invalido. **Ejemplos válidos:** 10min, 1h, 3d, 2m, 5s.",
+          "❌ Formato de tiempo inválido.\nEjemplos válidos: `10min`, `1h`, `3d`, `2m`, `5s`.",
+        flags: MessageFlags.Ephemeral,
       });
 
     if (ctx.author.id === user.id)
       return ctx.write({
-        content: "✗ No podés silenciarte a vos mismo.",
+        content: "❌ No podés silenciarte a vos mismo.",
+        flags: MessageFlags.Ephemeral,
       });
 
     const targetMember =
@@ -56,13 +60,15 @@ export default class MuteCommand extends Command {
     if (!targetMember)
       return ctx.write({
         content:
-          "✗ No se pudo encontrar al miembro a silenciar en el servidor.",
+          "❌ No se pudo encontrar al miembro a silenciar en el servidor.",
+        flags: MessageFlags.Ephemeral,
       });
 
     if (!(await targetMember.moderatable()))
       return ctx.write({
         content:
-          "✗ No podés silenciar a un usuario con un rol igual o superior al tuyo.",
+          "❌ No podés silenciar a un usuario con un rol igual o superior al tuyo.",
+        flags: MessageFlags.Ephemeral,
       });
 
     const text = `${reason} | Silenciado por ${ctx.author.username}`;
@@ -70,15 +76,14 @@ export default class MuteCommand extends Command {
     const milliseconds = parse(time) || 0;
     await targetMember.timeout(milliseconds, text);
 
-    // TODO: logging
-
     const successEmbed = new Embed({
-      title: "Usuario silenciado",
+      title: "🔇 Usuario silenciado correctamente",
       description: `
-            ✓ El usuario **${ctx.options.user.username}** fue silenciado correctamente.
-            
-            **Razón:** ${reason}
-            `,
+        El usuario **${ctx.options.user.username}** fue silenciado exitosamente.
+
+        **Razón:** ${reason}  
+        **Duración:** ${time}
+      `,
       color: EmbedColors.Green,
       footer: {
         text: `Silenciado por ${ctx.author.username}`,
