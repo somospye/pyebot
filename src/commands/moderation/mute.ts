@@ -10,7 +10,6 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 import { MessageFlags } from "seyfert/lib/types";
-import { CHANNELS_ID } from "@/constants/guild";
 import { isValid, parse } from "@/utils/ms";
 
 const options = {
@@ -40,6 +39,7 @@ const options = {
 export default class MuteCommand extends Command {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user, time, reason = "Razón no especificada" } = ctx.options;
+    const GuildLogger = await ctx.getGuildLogger();
 
     if (!isValid(time))
       return await ctx.write({
@@ -93,6 +93,25 @@ export default class MuteCommand extends Command {
 
     await ctx.write({
       embeds: [successEmbed],
+    });
+
+    await GuildLogger.banSanctionLog({
+      title: "Usuario silenciado",
+      color: EmbedColors.Orange,
+      thumbnail: await user.avatarURL(),
+      fields: [
+        {
+          name: "Usuario",
+          value: `${user.username} (${user.id})`,
+          inline: true,
+        },
+        { name: "Razón", value: reason, inline: false },
+        { name: "Duración", value: time, inline: true },
+      ],
+      footer: {
+        text: `${ctx.author.username} (${ctx.author.id})`,
+        iconUrl: ctx.author.avatarURL(),
+      },
     });
   }
 }
