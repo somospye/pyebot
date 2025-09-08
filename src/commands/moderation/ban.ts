@@ -33,10 +33,11 @@ const options = {
 export default class BanCommand extends Command {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user, reason } = ctx.options;
+    const GuildLogger = await ctx.getGuildLogger();
 
     if (ctx.author.id === user.id)
       return ctx.write({
-        content: "✗ No podés banearte a vos mismo.",
+        content: "❌ No podés banearte a vos mismo.",
       });
 
     const targetMember =
@@ -44,37 +45,53 @@ export default class BanCommand extends Command {
 
     if (!targetMember)
       return ctx.write({
-        content: "✗ No se pudo encontrar al miembro a banear en el servidor.",
+        content: "❌ No se pudo encontrar al miembro a banear en el servidor.",
       });
 
     if (!(await targetMember.moderatable()))
       return ctx.write({
         content:
-          "✗ No podés banear a un usuario con un rol igual o superior al tuyo.",
+          "❌ No podés banear a un usuario con un rol igual o superior al tuyo.",
       });
 
     const text = `${reason} | Baneado por ${ctx.author.username}`;
 
     await ctx.client.bans.create(ctx.guildId, user.id, {}, text);
 
-    // TODO: logging
-
     const successEmbed = new Embed({
-      title: "Usuario baneado",
+      title: "Usuario baneado correctamente",
       description: `
-            ✓ El usuario **${ctx.options.user.username}** fue baneado correctamente.
-            
-            **Razón:** ${reason}
-            `,
+        El usuario **${ctx.options.user.username}** fue baneado exitosamente.
+
+        **Razón:** ${reason}
+      `,
       color: EmbedColors.Green,
       footer: {
         text: `Baneado por ${ctx.author.username}`,
-        icon_url: ctx.author.avatarURL() || undefined,
+        icon_url: ctx.author.avatarURL(),
       },
     });
 
     await ctx.write({
       embeds: [successEmbed],
+    });
+
+    await GuildLogger.banSanctionLog({
+      title: "Usuario baneado",
+      color: EmbedColors.Red,
+      thumbnail: await user.avatarURL(),
+      fields: [
+        {
+          name: "Usuario",
+          value: `${user.username} (${user.id})`,
+          inline: true,
+        },
+        { name: "Razón", value: reason, inline: false },
+      ],
+      footer: {
+        text: `${ctx.author.username} (${ctx.author.id})`,
+        iconUrl: ctx.author.avatarURL(),
+      },
     });
   }
 }
