@@ -38,6 +38,8 @@ Antes de comenzar, asegurate de leer y seguir todas las instrucciones de este do
 * Utilizamos el estándar [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
 * **No uses emojis** en los mensajes de commit.
 * Lefthook validará esto automáticamente.
+* El hook `scripts/validate-commit-msg.sh` chequea todo esto sin drama.
+* Lo movimos a un script porque en Windows el cmd se rompia con los parentesis del inline y frenaba el commit.
 * Este estándar es necesario para poder generar automáticamente los `changelogs` con [git-cliff](https://git-cliff.org).
 
 ---

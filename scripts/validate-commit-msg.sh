@@ -18,7 +18,7 @@ if [[ -z "$commit_msg" && -f .git/COMMIT_EDITMSG ]]; then
   commit_msg="$(head -n 1 .git/COMMIT_EDITMSG | tr -d '\r\n')"
 fi
 
-# si no hay nada o es puro comentario salimos tranqui
+# si no hay nada o es solo comentario terminamos
 if [[ -z "$commit_msg" ]] || printf '%s' "$commit_msg" | grep -qE '^#'; then
   printf '[warn] mensaje vacio, me salto el chequeo.\n'
   exit 0
