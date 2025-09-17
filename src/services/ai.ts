@@ -9,6 +9,11 @@ import { SAFETY_SETTINGS } from "@/constants/ai";
 import { getContextMessages } from "@/utils/getContext";
 import { type Message, userMemory } from "@/utils/userMemory";
 
+
+// Respuesta por defecto si la API no responde
+// Ej. si la clave de google gemini no es válida
+const DEFAULT_NO_API_RESPONSE = "Mejor comamos un poco de sushi! 🍣";
+
 const genAI = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY,
 });
@@ -82,7 +87,7 @@ export const callGeminiAI = async (
   } catch (e) {
     console.error("[callGeminiAI] Error:", e);
     return {
-      text: "Mejor comamos un poco de sushi 🍣",
+      text: DEFAULT_NO_API_RESPONSE,
     };
   }
 };
@@ -96,7 +101,7 @@ async function processResponse(
   const candidates = response?.candidates ?? [];
 
   if (candidates.length === 0) {
-    return { text: "Mejor comamos un poco de sushi! 🍣" };
+    return { text: DEFAULT_NO_API_RESPONSE };
   }
 
   const parts = candidates[0].content?.parts ?? [];
@@ -110,7 +115,7 @@ async function processResponse(
   }
 
   return {
-    text: text.trim() || "Mejor comamos un poco de sushi! 🍣",
+    text: text.trim() || DEFAULT_NO_API_RESPONSE,
     image,
   };
 }
