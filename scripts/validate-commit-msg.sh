@@ -28,7 +28,7 @@ printf '[check] revisando commit: "%s"\n' "$commit_msg"
 
 # patron de conventional commits
 if ! printf '%s' "$commit_msg" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([^)]+\))?: .{1,50}$'; then
-  printf '[fail] formato raro, seguime la onda del spec.\n'
+  printf '[fail] formato raro, spec: \n'
   printf 'usa: <tipo>(scope opcional): descripcion corta\n'
   printf 'tipos validos: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test\n'
   printf 'tu mensaje: "%s"\n' "$commit_msg"
@@ -37,7 +37,7 @@ fi
 
 # largo maximo 72 chars
 if (( ${#commit_msg} > 72 )); then
-  printf '[fail] muy largo, bancalo a 72 chars o menos.\n'
+  printf '[fail] muy largo, deberia ser a 72 chars o menos.\n'
   printf 'largo actual: %d\n' ${#commit_msg}
   printf 'tu mensaje: "%s"\n' "$commit_msg"
   exit 1
@@ -46,7 +46,7 @@ fi
 # descripcion en modo imperativo
 description="$(printf '%s' "$commit_msg" | sed -E 's/^[a-z]+(\([^)]+\))?: //')"
 if printf '%s' "$description" | grep -qE '^(added|fixed|updated|changed|removed|created)'; then
-  printf '[warn] tiralo en imperativo: add, fix, update, etc.\n'
+  printf '[warn] formato en imperativo: add, fix, update, etc.\n'
   printf 'tu mensaje: "%s"\n' "$commit_msg"
   exit 1
 fi

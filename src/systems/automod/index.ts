@@ -1,10 +1,11 @@
-import { UsingClient, type Message } from "seyfert";
+import type { UsingClient, Message } from "seyfert";
 import { spamFilterList, scamFilterList } from "@/constants/automod";
 import { phash } from "@/utils/phash";
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
 import { CHANNELS_ID } from "@/constants/guild";
 import { Cache } from "@/utils/cache";
+import { registerAutoModDebug } from "@/debug/automod";
 
 type AttachmentLike = {
   contentType?: string | null;
@@ -13,11 +14,12 @@ type AttachmentLike = {
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
-const ONE_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Núcleo del AutoMod del servidor: revisa texto rápido y luego analiza adjuntos según haga falta.
  */
+
+type OcrWorker = Awaited<ReturnType<typeof createWorker>>;
 
 export class AutoModSystem {
   private client: UsingClient;
@@ -28,13 +30,15 @@ export class AutoModSystem {
     persistIntervalMs: 5 * 60 * 1000, // every 5 minutes
     cleanupIntervalMs: 60 * 60 * 1000, // every hour
   });
+  private ocrWorkerPromise?: Promise<OcrWorker>;
+  private ocrQueue: Promise<void> = Promise.resolve();
 
   constructor(client: UsingClient) {
     this.client = client;
   }
 
   /**
-   * singleton: una instancia por cliente porque guardamos caché y pronto un worker OCR.
+   * Patrón singleton: una instancia por cliente porque guardamos caché y pronto un worker OCR.
    */
   public static getInstance(client: UsingClient): AutoModSystem {
     if (!AutoModSystem.instance) {
@@ -47,25 +51,30 @@ export class AutoModSystem {
    * Pipeline principal de moderación. Devuelve true cuando ya se actuó y el caller decide si seguir.
    */
   public async analyzeUserMessage(message: Message): Promise<boolean> {
-    const normalizedContent = message.content?.toLowerCase() ?? "";
-    const attachments = (message.attachments ?? []) as AttachmentLike[];
+    try {
+      const normalizedContent = message.content?.toLowerCase() ?? "";
+      const attachments = (message.attachments ?? []) as AttachmentLike[];
 
-    if (await this.runSpamFilters(message, normalizedContent)) {
-      return true;
-    }
-
-    if (!this.shouldScanAttachments(message, attachments)) {
-      return false;
-    }
-
-    for (const attachment of attachments) {
-      const handled = await this.handleAttachment(message, attachment);
-      if (handled) {
+      if (await this.runSpamFilters(message, normalizedContent)) {
         return true;
       }
-    }
 
-    return false;
+      if (!this.shouldScanAttachments(message, attachments)) {
+        return false;
+      }
+
+      for (const attachment of attachments) {
+        const handled = await this.handleAttachment(message, attachment);
+        if (handled) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error("AutoModSystem: error evaluando mensaje:", error);
+      return false;
+    }
   }
 
   /**
@@ -86,12 +95,13 @@ export class AutoModSystem {
         );
       } else {
         // TODO: filtros sin mute
+        // ? Se podria avisar al staff o similar
       }
 
       if (spamFilter.warnMessage) {
         await this.notifySuspiciousActivity(
           spamFilter.warnMessage,
-          message.url,
+          message,
         );
       }
 
@@ -105,19 +115,19 @@ export class AutoModSystem {
    * Decide si las heurísticas permiten analizar adjuntos para este mensaje.
    */
   private shouldScanAttachments(
-    message: Message,
+    _message: Message,
     attachments: AttachmentLike[],
   ): boolean {
     if (attachments.length === 0) {
       return false;
     }
 
-    const accountAge = Date.now() - message.author.createdAt.getTime();
-    const isNewUser = accountAge < ONE_DAY;
+    const hasImageAttachment = attachments.some((attachment) =>
+      attachment.contentType?.startsWith("image"),
+    );
 
-    if (!isNewUser && attachments.length <= 2) {
-      // usuarios antiguos con pocos adjuntos son "exentos".
-      // ? Demasiado permisivo? 
+    if (!hasImageAttachment) {
+      // Sólo nos interesan adjuntos que realmente sean imágenes.
       return false;
     }
 
@@ -169,14 +179,13 @@ export class AutoModSystem {
   }
 
   /**
-   * Notifica al staff y borra el mensaje cuando la imagen se ve sospechosa.
+   * Notifica al staff sobre una imagen sospechosa.
    */
   private async flagSuspiciousImage(message: Message, attachmentUrl: string) {
     await this.notifySuspiciousActivity(
       `[SECURITY] Imagen rara ${message.author.tag}: ${attachmentUrl}`,
-      message.url,
+      message
     );
-    await message.delete();
   }
 
   /**
@@ -192,18 +201,50 @@ export class AutoModSystem {
 
   /**
    * Corre OCR sobre la imagen preparada y compara el texto con los patrones de estafa.
-   * Por ahora crea un worker por llamada; se cambiará por uno compartido más adelante.
+   * Se apoya en un único worker compartido para evitar crear procesos extra.
    */
   private async analyzeImage(buffer: ArrayBuffer) {
     const image = await this.preprocessImage(buffer);
-    const worker = await createWorker("eng");
-    const {
-      data: { text },
-    } = await worker.recognize(image);
-    await worker.terminate();
+    const text = await this.enqueueOcrTask(async (worker) => {
+      const {
+        data: { text },
+      } = await worker.recognize(image);
+      return text;
+    });
 
-    const lowerCaseText = text.toLowerCase();
-    return scamFilterList.find((filter: RegExp) => filter.test(lowerCaseText));
+    const normalizedText = text.toLowerCase();
+    return scamFilterList.find((filter: RegExp) => filter.test(normalizedText));
+  }
+
+  /**
+   * Obtiene (o crea) el worker OCR compartido. Arranca en inglés porque es lo más común en los scams.
+   */
+  private getOcrWorker(): Promise<OcrWorker> {
+    if (this.ocrWorkerPromise) {
+      return this.ocrWorkerPromise;
+    }
+
+    const workerPromise = createWorker("eng");
+    this.ocrWorkerPromise = workerPromise;
+    return workerPromise;
+  }
+
+  /**
+   * Serializa las peticiones al worker para evitar condiciones de carrera.
+   */
+  private enqueueOcrTask<T>(
+    run: (worker: OcrWorker) => Promise<T>,
+  ): Promise<T> {
+    const task = this.ocrQueue
+      .then(() => this.getOcrWorker())
+      .then((worker) => run(worker));
+
+    this.ocrQueue = task.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return task;
   }
 
   /**
@@ -211,14 +252,20 @@ export class AutoModSystem {
    */
   private async notifySuspiciousActivity(
     warning: string,
-    referenceUrl: string | null,
+    message: Message
   ) {
+
+    // TODO: botones para borrar el mensaje directamente y saltar al mensaje
     await this.client.messages
       .write(CHANNELS_ID.staff, {
-        content: `**Advertencia:** ${warning}. ${referenceUrl ?? ""}`,
+        content: `**Advertencia:** ${warning}. ${message.url ?? ""}`,
       })
       .catch((err: Error) =>
         console.error("AutoModSystem: Error al advertir al staff:", err),
       );
   }
 }
+
+// Si DEBUG incluye "automod" (p. ej. DEBUG=automod), se activa la instrumentación.
+// @ts-ignore
+registerAutoModDebug(AutoModSystem);
