@@ -15,8 +15,8 @@ export class AutoModSystem {
   private static instance: AutoModSystem | null = null;
   private tempStorage = new Cache({
     persistPath: "./cache_automod.json",
-    persistIntervalMs: 5 * 60 * 1000,
-    cleanupIntervalMs: 60 * 60 * 1000,
+    persistIntervalMs: 5 * 60 * 1000, // every 5 minutes
+    cleanupIntervalMs: 60 * 60 * 1000, // every hour
   });
 
   constructor(client: UsingClient) {

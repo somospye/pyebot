@@ -31,7 +31,7 @@ export default class SelfMuteCommand extends Command {
       });
 
     const milliseconds = parse(time) || 0;
-    ctx.member.timeout(milliseconds, `Comando self-mute | Tiempo: ${time}`);
+    await ctx.member.timeout(milliseconds, `Comando self-mute | Tiempo: ${time}`);
 
     const successEmbed = new Embed({
       title: "Self mute",
