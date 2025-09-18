@@ -32,7 +32,7 @@ export default class RemoveWarnCommand extends SubCommand {
 
     const hasUser = await userRepository.has(user.id);
     if (!hasUser) {
-      userRepository.create(user.id);
+      await userRepository.create(user.id);
 
       return ctx.write({
         content: "✗ El usuario no tiene warns para remover.",

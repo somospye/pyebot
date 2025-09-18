@@ -32,9 +32,16 @@ export default class AddWarnCommand extends SubCommand {
     const userRepository = ctx.db.repositories.user;
 
     const hasUser = await userRepository.has(user.id);
-    if (!hasUser) userRepository.create(user.id);
+    if (!hasUser) await userRepository.create(user.id);
 
     const userDb = await userRepository.get(user.id);
+    if (!userDb) {
+      await ctx.write({
+        content:
+          "✗ No se pudo inicializar el usuario en la base de datos. Intenta nuevamente.",
+      });
+      return;
+    }
     const warnsCount = userDb.warns ? userDb.warns.length : 0;
 
     const finalReason = reason || "Razón no especificada";

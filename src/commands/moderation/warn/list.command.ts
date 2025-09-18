@@ -29,6 +29,9 @@ export default class ListWarnCommand extends SubCommand {
     }
 
     const userDb = await userRepository.get(user.id);
+    if (!userDb) {
+      return ctx.write({ content: "✗ No se pudo obtener la información del usuario." });
+    }
     const warns = userDb.warns ?? [];
 
     if (warns.length === 0) {

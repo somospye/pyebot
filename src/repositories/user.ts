@@ -18,7 +18,7 @@ export async function has(discordId: string): Promise<boolean> {
   return result.length > 0;
 }
 
-export async function get(discordId: string): Promise<User> {
+export async function get(discordId: string): Promise<User | undefined> {
   const result = await db
     .select()
     .from(users)
