@@ -48,7 +48,7 @@ export async function addWarn(discordId: string, newWarn: Warn) {
     .where(eq(users.id, discordId));
 }
 
-export async function removeWarn(discordId: string, warnId: number) {
+export async function removeWarn(discordId: string, warnId: string) {
   const userResult = await db
     .select()
     .from(users)

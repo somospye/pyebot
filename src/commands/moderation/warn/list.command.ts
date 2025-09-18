@@ -67,7 +67,8 @@ export default class ListWarnCommand extends SubCommand {
         const moderator = await fetchMemberName(warn.moderator);
         const date = new Date(warn.timestamp).toLocaleString();
 
-        return `__Warn número (ID) ${warn.warn_id}:__\n**Razón:** ${warn.reason}\n**Moderador:** ${moderator}\n**Fecha:** ${date}`;
+        const warnId = warn.warn_id.toUpperCase();
+        return `__Warn ID ${warnId}:__\n**Razón:** ${warn.reason}\n**Moderador:** ${moderator}\n**Fecha:** ${date}`;
       }),
     );
 
