@@ -3,16 +3,16 @@ import { randomBytes } from "node:crypto";
 const CROCKFORD_BASE32_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
 const SLUG_LENGTH = 5;
 const BASE = CROCKFORD_BASE32_ALPHABET.length;
-const RANDOM_BYTES = 4; // 32 bits -> perfect multiple of 2^25.
-const SHIFT = 7; // drop 7 bits so we keep 25 uniformly distributed bits.
+const RANDOM_BYTES = 4; // 32 bits, múltiplo exacto de 2^25.
+const SHIFT = 7; // quitamos 7 bits para quedarnos con 25 uniformes.
 
 /**
- * Generates a lowercase Crockford base32 slug that is friendly to read and type.
+ * Genera un slug base32 (Crockford) en minúsculas fácil de leer y escribir.
  *
- * We sample 25 uniformly distributed bits (yielding 32^5 combinations ≈ 33M)
- * which keeps the slug short (5 chars) while making collisions extremely unlikely.
+ * Se toman 25 bits uniformes (32^5 ≈ 33M combinaciones) para mantenerlo corto
+ * y con baja probabilidad de choque.
  *
- * Used for warn IDs. It's readable, case-insensitive, and avoids confusion between deleted IDs.
+ * Lo usamos como ID de warn para evitar duplicados y números confusos.
  */
 export function generateWarnId(): string {
   const randomBuffer = randomBytes(RANDOM_BYTES);
@@ -31,7 +31,7 @@ export function generateWarnId(): string {
 }
 
 /**
- * Checks whether the provided string matches the warn slug format.
+ * Valida si la cadena dada respeta el formato del slug de warn.
  */
 export function isValidWarnId(id: string): boolean {
   if (typeof id !== "string" || id.length !== SLUG_LENGTH) return false;
