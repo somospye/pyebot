@@ -1,0 +1,1 @@
+export { recognizeText } from "./paddle";
