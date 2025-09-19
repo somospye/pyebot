@@ -1,6 +1,6 @@
 import {
   type Content,
-  GenerateContentParameters,
+  type GenerateContentParameters,
   type GenerateContentResponse,
   GoogleGenAI,
   Modality,

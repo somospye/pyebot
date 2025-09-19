@@ -1,3 +1,6 @@
+# Materiales de entorno de desarrollo local, Ej. notas, archivos para configuracion de herramientas personales, etc.
+__local/
+
 # Logs
 logs
 *.log

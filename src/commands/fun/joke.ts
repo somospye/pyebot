@@ -1,7 +1,7 @@
 import type { CommandContext } from "seyfert";
 import { Command, Declare } from "seyfert";
 import { callGeminiAI } from "@/services/ai";
-import { Message } from "@/utils/userMemory";
+import type { Message } from "@/utils/userMemory";
 import { Modality } from "@google/genai";
 
 @Declare({

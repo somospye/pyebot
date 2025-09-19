@@ -9,6 +9,7 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 import type { Warn } from "@/schemas/user";
+import { generateWarnId } from "@/utils/warnId";
 
 const options = {
   user: createUserOption({
@@ -32,16 +33,31 @@ export default class AddWarnCommand extends SubCommand {
     const userRepository = ctx.db.repositories.user;
 
     const hasUser = await userRepository.has(user.id);
-    if (!hasUser) userRepository.create(user.id);
+    if (!hasUser) await userRepository.create(user.id);
 
     const userDb = await userRepository.get(user.id);
-    const warnsCount = userDb.warns ? userDb.warns.length : 0;
+    if (!userDb) {
+      await ctx.write({
+        content:
+          "✗ No se pudo inicializar el usuario en la base de datos. Intenta nuevamente.",
+      });
+      return;
+    }
+    const existingWarns = userDb.warns ?? [];
+    const existingIds = new Set(existingWarns.map((warn) => warn.warn_id));
+
+    let warnId = generateWarnId();
+
+    // Evitar colisiones; extremadamente improbables
+    while (existingIds.has(warnId)) {
+      warnId = generateWarnId();
+    }
 
     const finalReason = reason || "Razón no especificada";
 
     const warn: Warn = {
       reason: finalReason,
-      warn_id: warnsCount + 1,
+      warn_id: warnId,
       moderator: ctx.author.id,
       timestamp: new Date().toISOString(),
     };
@@ -54,6 +70,7 @@ export default class AddWarnCommand extends SubCommand {
             ✓ Se añadió un warn al usuario **${user.username}**.
             
             **Razón:** ${finalReason}
+            **ID del warn:** ${warnId.toUpperCase()}
             `,
       color: EmbedColors.Green,
       footer: {

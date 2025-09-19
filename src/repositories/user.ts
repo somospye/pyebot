@@ -18,7 +18,7 @@ export async function has(discordId: string): Promise<boolean> {
   return result.length > 0;
 }
 
-export async function get(discordId: string): Promise<User> {
+export async function get(discordId: string): Promise<User | undefined> {
   const result = await db
     .select()
     .from(users)
@@ -48,7 +48,7 @@ export async function addWarn(discordId: string, newWarn: Warn) {
     .where(eq(users.id, discordId));
 }
 
-export async function removeWarn(discordId: string, warnId: number) {
+export async function removeWarn(discordId: string, warnId: string) {
   const userResult = await db
     .select()
     .from(users)

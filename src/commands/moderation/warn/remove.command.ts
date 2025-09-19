@@ -1,6 +1,6 @@
 import type { GuildCommandContext } from "seyfert";
 import {
-  createNumberOption,
+  createStringOption,
   createUserOption,
   Declare,
   Embed,
@@ -8,14 +8,15 @@ import {
   SubCommand,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
+import { isValidWarnId } from "@/utils/warnId";
 
 const options = {
   user: createUserOption({
     description: "Usuario a unwarnear",
     required: true,
   }),
-  warn_id: createNumberOption({
-    description: "ID del warn",
+  warn_id: createStringOption({
+    description: "ID del warn (ej. pyebt)",
     required: true,
   }),
 };
@@ -30,9 +31,18 @@ export default class RemoveWarnCommand extends SubCommand {
     const { user, warn_id } = ctx.options;
     const userRepository = ctx.db.repositories.user;
 
+    const warnId = warn_id.toLowerCase();
+
+    if (!isValidWarnId(warnId)) {
+      return ctx.write({
+        content:
+          "✗ El ID del warn no es válido. Debe tener 5 caracteres alfanuméricos sin confusiones (ej. pyebt).",
+      });
+    }
+
     const hasUser = await userRepository.has(user.id);
     if (!hasUser) {
-      userRepository.create(user.id);
+      await userRepository.create(user.id);
 
       return ctx.write({
         content: "✗ El usuario no tiene warns para remover.",
@@ -40,7 +50,7 @@ export default class RemoveWarnCommand extends SubCommand {
     }
 
     try {
-      await userRepository.removeWarn(user.id, warn_id);
+      await userRepository.removeWarn(user.id, warnId);
     } catch (error) {
       let errorMessage = "Error desconocido";
 
@@ -56,7 +66,7 @@ export default class RemoveWarnCommand extends SubCommand {
     const successEmbed = new Embed({
       title: "Usuario unwarneado",
       description: `
-            ✓ Se removió un warn al usuario **${user.username}**.
+            ✓ Se removió el warn **${warnId.toUpperCase()}** del usuario **${user.username}**.
             `,
       color: EmbedColors.Green,
       footer: {
