@@ -68,7 +68,7 @@ export default class ListWarnCommand extends SubCommand {
         const date = new Date(warn.timestamp).toLocaleString();
 
         const warnId = warn.warn_id.toUpperCase();
-        return `__Warn ID ${warnId}:__\n**Razón:** ${warn.reason}\n**Moderador:** ${moderator}\n**Fecha:** ${date}`;
+        return `**Warn ID**: \`${warnId}\`\n**Razón:** ${warn.reason}\n**Moderador:** ${moderator}\n**Fecha:** ${date}`;
       }),
     );
 
