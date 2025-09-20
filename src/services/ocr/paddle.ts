@@ -21,6 +21,9 @@ let ocrQueue: Promise<void> = Promise.resolve();
 async function preprocessImage(buffer: ArrayBuffer): Promise<ImageInput> {
   const source = Buffer.from(buffer);
   const { data, info } = await sharp(source)
+    .grayscale()
+    .normalize()
+    .threshold(150)
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
