@@ -13,7 +13,9 @@
     "lint": "biome lint",
     "lint:fix": "biome lint --write",
     "check": "biome check",
-    "check:fix": "biome check --write"
+    "check:fix": "biome check --write",
+    "migrate-db": "pnpm drizzle-kit generate && pnpm drizzle-kit migrate",
+    "clean": "rimraf dist commands.json"
   },
   "author": "Comunidad PyE",
   "license": "MIT",
@@ -24,6 +26,7 @@
     "drizzle-kit": "^0.31.4",
     "lefthook": "^1.12.2",
     "lint-staged": "^16.1.2",
+    "rimraf": "^6.0.1",
     "tsc-alias": "^1.8.16",
     "tsc-watch": "^7.1.1",
     "typescript": "^5.9.2"
@@ -33,10 +36,11 @@
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.4",
     "module-alias": "^2.2.3",
+    "onnxruntime-node": "1.22.0-rev",
+    "paddleocr": "^1.0.6",
     "pg": "^8.16.3",
     "seyfert": "^3.2.5",
-    "sharp": "^0.34.3",
-    "tesseract.js": "^6.0.1"
+    "sharp": "^0.34.3"
   },
   "lint-staged": {
     "*.{ts,js,mjs,cjs,json}": "biome check --write"
