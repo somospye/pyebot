@@ -26,5 +26,5 @@
     "stripInternal": true
   },
   "exclude": ["node_modules"],
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "__local/autoFormatCode", "__local/code-dectection"]
 }
