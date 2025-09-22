@@ -7,7 +7,8 @@ export type CoreChannelName =
   | "pointsLog"
   | "generalLogs"
   | "banSanctions"
-  | "staff";
+  | "staff"
+  | "suggestions";
 
 export interface CoreChannelDefinition {
   name: CoreChannelName;
@@ -55,13 +56,18 @@ export const CORE_CHANNEL_DEFINITIONS: readonly CoreChannelDefinition[] = [
     label: "Alertas para el staff",
     defaultChannelId: CHANNELS_ID.staff,
   },
+  {
+    name: "suggestions",
+    label: "Sugerencias",
+    defaultChannelId: CHANNELS_ID.suggestions,
+  },
 ] as const;
 
 /** Acceso rapido a la etiqueta humana que se muestra en embeds/logs. */
-export const CORE_CHANNEL_LABELS: Record<CoreChannelName, string> = Object.fromEntries(
-  CORE_CHANNEL_DEFINITIONS.map((definition) => [definition.name, definition.label]),
-) as Record<CoreChannelName, string>;
-
-
-
-
+export const CORE_CHANNEL_LABELS: Record<CoreChannelName, string> =
+  Object.fromEntries(
+    CORE_CHANNEL_DEFINITIONS.map((definition) => [
+      definition.name,
+      definition.label,
+    ]),
+  ) as Record<CoreChannelName, string>;
