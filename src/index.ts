@@ -1,11 +1,14 @@
 import "module-alias/register";
+import "dotenv/config";
 
-import type { ParseClient } from "seyfert";
+import type { ParseClient, ParseMiddlewares, UsingClient } from "seyfert";
 import { Client, extendContext } from "seyfert";
 import { db } from "@/db";
+import { CooldownManager } from "@/modules/cooldown";
 import * as repositories from "@/repositories";
 import * as schemas from "@/schemas";
 import { GuildLogger } from "@/utils/guildLogger";
+import { middlewares } from "./middlewares";
 
 const context = extendContext((interaction) => {
   return {
@@ -20,12 +23,21 @@ const context = extendContext((interaction) => {
   };
 });
 
-const client = new Client({ context });
-client
-  .start()
-  .then(() => client.uploadCommands({ cachePath: "./commands.json" }));
+const client = new Client({ context }) as UsingClient & Client;
+client.start().then(() => {
+  client.uploadCommands({ cachePath: "./commands.json" });
+  client.cooldown = new CooldownManager(client);
+});
+
+client.setServices({
+  middlewares: middlewares,
+});
 
 declare module "seyfert" {
-  interface UsingClient extends ParseClient<Client<true>> {}
+  interface UsingClient extends ParseClient<Client<true>> {
+    cooldown: CooldownManager;
+  }
   interface ExtendContext extends ReturnType<typeof context> {}
+  interface RegisteredMiddlewares
+    extends ParseMiddlewares<typeof middlewares> {}
 }

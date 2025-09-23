@@ -1,6 +1,14 @@
-import type { GuildCommandContext } from "seyfert";
-import { Command, createStringOption, Declare, Embed, Options } from "seyfert";
+import type { CommandContext, GuildCommandContext } from "seyfert";
+import {
+  Command,
+  createStringOption,
+  Declare,
+  Embed,
+  Middlewares,
+  Options,
+} from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
+import { Cooldown, CooldownType } from "@/modules/cooldown";
 import { GuildChannelsRepository } from "@/modules/guild-channels";
 
 const options = {
@@ -17,6 +25,14 @@ const options = {
   contexts: ["Guild"],
   integrationTypes: ["GuildInstall"],
 })
+@Cooldown({
+  type: CooldownType.User,
+  interval: 5_000 * 60,
+  uses: {
+    default: 1,
+  },
+})
+@Middlewares(["cooldown"])
 @Options(options)
 export default class SuggestCommand extends Command {
   async run(ctx: GuildCommandContext<typeof options>) {
@@ -76,5 +92,9 @@ export default class SuggestCommand extends Command {
     await ctx.write({
       content: "✅ Sugerencia enviada correctamente.",
     });
+  }
+
+  onMiddlewaresError(context: CommandContext, error: string) {
+    context.editOrReply({ content: error });
   }
 }
