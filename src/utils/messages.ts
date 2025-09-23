@@ -1,23 +1,10 @@
-import type {
-  CommandContext,
-  Interaction,
-  Message,
-  TextBaseGuildChannel,
-} from "seyfert";
+import type { Message, UsingClient } from "seyfert";
 
 const DEFAULT_PAGE_LIMIT = 1900; // El limite por mensaje es aprox 2000 carácteres
 
-type PaginateTarget =
-  | Message
-  | Interaction
-  | CommandContext
-  | {
-      reply: (input: { content: string }) => Promise<unknown>;
-      channel?: TextBaseGuildChannel;
-    };
-
 export async function sendPaginatedMessages(
-  target: PaginateTarget,
+  client: UsingClient,
+  target: Message,
   content: string,
   reply: boolean = false,
 ): Promise<void> {
@@ -28,7 +15,19 @@ export async function sendPaginatedMessages(
     if (!message) continue;
 
     if (isReplyable(target) && reply) {
-      await target.reply({ content: message });
+      await client.messages.write(target?.channelId ?? "", {
+        content: message,
+        allowed_mentions: { parse: [] },
+        ...(reply
+          ? {
+              message_reference: {
+                message_id: target.id,
+                guild_id: target.guildId,
+                channel_id: target.channelId,
+              },
+            }
+          : {}),
+      });
     } else {
       throw new Error("Unsupported target for paginated message.");
     }

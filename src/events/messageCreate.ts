@@ -1,7 +1,7 @@
 import { createEvent } from "seyfert";
 import { processMessage } from "@/services/ai";
-import { sendPaginatedMessages } from "@/utils/messages";
 import { AutoModSystem } from "@/systems/automod";
+import { sendPaginatedMessages } from "@/utils/messages";
 
 export default createEvent({
   data: { name: "messageCreate" },
@@ -31,10 +31,15 @@ export default createEvent({
         filename: "sushi.png",
         data: response.image,
       };
-      await message.reply({ content: response.text, files: [file] });
+
+      await message.reply({
+        content: response.text,
+        files: [file],
+        allowed_mentions: { parse: [] },
+      });
+
       return;
     }
-
-    await sendPaginatedMessages(message, response.text, true);
+    await sendPaginatedMessages(client, message, response.text, true);
   },
 });

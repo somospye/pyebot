@@ -5,10 +5,9 @@ import {
   GoogleGenAI,
   Modality,
 } from "@google/genai";
-import { SAFETY_SETTINGS } from "@/constants/ai";
+import { BOT_PROMPT, SAFETY_SETTINGS } from "@/constants/ai";
 import { getContextMessages } from "@/utils/getContext";
 import { type Message, userMemory } from "@/utils/userMemory";
-
 
 // Respuesta por defecto si la API no responde
 // Ej. si la clave de google gemini no es válida
@@ -59,10 +58,11 @@ export const processMessage = async ({
   }
 };
 
+// Por ahora deshabilitamos la respuesta de IMAGEN porque no funciona bien
 export const callGeminiAI = async (
   messages: Message[],
   options: Omit<GenerateContentParameters, "contents"> = {
-    model: "gemini-2.0-flash-preview-image-generation",
+    model: "gemini-2.5-flash",
     config: {
       safetySettings: SAFETY_SETTINGS,
       candidateCount: 1,
@@ -70,14 +70,23 @@ export const callGeminiAI = async (
       temperature: 0.68,
       topK: 35,
       topP: 0.77,
-      responseModalities: [Modality.TEXT, Modality.IMAGE],
+      responseModalities: [Modality.TEXT],
     },
   },
 ): Promise<AIResponse> => {
-  const contents: Content[] = messages.map((msg) => ({
-    role: msg.role,
-    parts: [{ text: msg.content }],
-  }));
+  let contents: Content[] = [
+    {
+      role: "user",
+      parts: [{ text: BOT_PROMPT }],
+    },
+  ];
+
+  contents = contents.concat(
+    messages.map((msg) => ({
+      role: msg.role,
+      parts: [{ text: msg.content }],
+    })),
+  );
 
   const params = { contents, ...options };
 
