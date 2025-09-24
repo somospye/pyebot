@@ -27,10 +27,10 @@ fi
 printf '[check] revisando commit: "%s"\n' "$commit_msg"
 
 # patron de conventional commits
-if ! printf '%s' "$commit_msg" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([^)]+\))?: .{1,72}$'; then
+if ! printf '%s' "$commit_msg" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test|git)(\([^)]+\))?: .{1,72}$'; then
   printf '[fail] formato raro, spec: \n'
   printf 'usa: <tipo>(scope opcional): descripcion corta\n'
-  printf 'tipos validos: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test\n'
+  printf 'tipos validos: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test, git\n'
   printf 'tu mensaje: "%s"\n' "$commit_msg"
   exit 1
 fi

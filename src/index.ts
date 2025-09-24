@@ -8,7 +8,7 @@ import { CooldownManager } from "@/modules/cooldown";
 import * as repositories from "@/repositories";
 import * as schemas from "@/schemas";
 import { GuildLogger } from "@/utils/guildLogger";
-import { middlewares } from "./middlewares";
+import * as middlewares from "@/middlewares";
 
 const context = extendContext((interaction) => {
   return {
@@ -23,15 +23,17 @@ const context = extendContext((interaction) => {
   };
 });
 
-const client = new Client({ context }) as UsingClient & Client;
-client.start().then(() => {
-  client.uploadCommands({ cachePath: "./commands.json" });
-  client.cooldown = new CooldownManager(client);
+const client = new Client({
+  context,
+  globalMiddlewares: ["rateLimit"],
 });
 
 client.setServices({
-  middlewares: middlewares,
+  middlewares,
 });
+client
+  .start()
+  .then(() => client.uploadCommands({ cachePath: "./commands.json" }));
 
 declare module "seyfert" {
   interface UsingClient extends ParseClient<Client<true>> {
