@@ -1,4 +1,3 @@
-import { registerRateLimiterDebug } from "@/debug/rateLimiter";
 
 interface BucketState {
   count: number;
@@ -98,9 +97,5 @@ export class RoleRateLimiter {
     }
   }
 }
-
-
-
-registerRateLimiterDebug(RoleRateLimiter);
 
 export const roleRateLimiter = new RoleRateLimiter();

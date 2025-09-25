@@ -1,14 +1,14 @@
-import "module-alias/register";
+﻿import "module-alias/register";
 import "dotenv/config";
 
-import type { ParseClient, ParseMiddlewares, UsingClient } from "seyfert";
+import type { ParseClient, ParseMiddlewares } from "seyfert";
 import { Client, extendContext } from "seyfert";
 import { db } from "@/db";
 import { CooldownManager } from "@/modules/cooldown";
 import * as repositories from "@/repositories";
 import * as schemas from "@/schemas";
 import { GuildLogger } from "@/utils/guildLogger";
-import * as middlewares from "@/middlewares";
+import { middlewares } from "./middlewares";
 
 const context = extendContext((interaction) => {
   return {
@@ -28,9 +28,11 @@ const client = new Client({
   globalMiddlewares: ["rateLimit"],
 });
 
+
 client.setServices({
   middlewares,
 });
+
 client
   .start()
   .then(() => client.uploadCommands({ cachePath: "./commands.json" }));
@@ -40,6 +42,5 @@ declare module "seyfert" {
     cooldown: CooldownManager;
   }
   interface ExtendContext extends ReturnType<typeof context> {}
-  interface RegisteredMiddlewares
-    extends ParseMiddlewares<typeof middlewares> {}
+  interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> {}
 }

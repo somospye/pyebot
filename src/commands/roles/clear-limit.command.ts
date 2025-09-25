@@ -24,7 +24,20 @@ const options = {
 export default class RoleClearLimitCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const key = ctx.options.key.trim();
-    const action = ctx.options.action.trim();
+    const rawAction = ctx.options.action.trim();
+
+    if (rawAction.includes('.')) {
+      const embed = new Embed({
+        title: "Formato de accion invalido",
+        description: "Usa el nombre completo del comando con espacios, por ejemplo \`warn add\`.",
+        color: EmbedColors.Red,
+      });
+
+      await ctx.write({ embeds: [embed] });
+      return;
+    }
+
+    const action = rawAction.toLowerCase();
 
     if (!key || !action) {
       const embed = new Embed({
@@ -67,3 +80,4 @@ export default class RoleClearLimitCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+

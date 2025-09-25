@@ -36,5 +36,5 @@ onMessageCreate(async (message, client) => {
     return;
   }
 
-  await sendPaginatedMessages(message, response.text, true);
+  await sendPaginatedMessages(client, message, response.text, true);
 });

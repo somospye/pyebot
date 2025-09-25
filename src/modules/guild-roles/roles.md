@@ -5,6 +5,8 @@ uso adicionales que el bot aplica durante sus comandos. No reemplaza los permiso
 Discord: unicamente anade una forma de restringir cuantas veces se puede ejecutar cierta
 accion en una ventana de tiempo.
 
+Está principalmente orientado a comandos de moderación.
+
 ## Conceptos principales
 
 - **Configuracion de rol**: estructura plana guardada en la columna `roles` de la tabla
@@ -63,9 +65,11 @@ Las acciones utilizadas por los comandos internos del bot son:
 
 - `kick` para la expulsion (`/kick`).
 - `ban` para el comando `/ban`.
-- `warn.add` para el subcomando `/warn add`.
+- `warn add` para el subcomando `/warn add`.
 
 Usa exactamente esas claves al configurar los limites si deseas cubrir esas rutas.
+
+> Nota: el middleware usa `context.fullCommandName`, por lo que la clave debe coincidir con el nombre completo del comando (con espacios), tal como aparece en Discord.
 
 ## Flujo habitual
 
@@ -85,12 +89,12 @@ Usa exactamente esas claves al configurar los limites si deseas cubrir esas ruta
     "rateLimits": {
       "kick": { "uses": 10, "perSeconds": 86400 },
       "ban": { "uses": 3, "perSeconds": 86400 },
-      "warn": null
+      "warn add": null
     }
   }
 }
 ```
 
 Cada clave del objeto raiz representa una configuracion de rol. Los nombres de las acciones
-(`kick`, `ban`, etc.) quedan a criterio del comando que los utilice. Mientras se comuniquen
-de forma consistente en la UI y en el codigo, el modulo no impone restricciones.
+(`kick`, `ban`, etc.) quedan a criterio del comando que los utilice. 
+

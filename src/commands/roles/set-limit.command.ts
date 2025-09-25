@@ -18,7 +18,7 @@ const options = {
     required: true,
   }),
   action: createStringOption({
-    description: "Accion identificada por el bot (ej. kick, ban, warn.add)",
+    description: "Accion identificada por el bot (ej. kick, ban, warn add)",
     required: true,
   }),
   uses: createIntegerOption({
@@ -42,7 +42,20 @@ const options = {
 export default class RoleSetLimitCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const key = ctx.options.key.trim();
-    const action = ctx.options.action.trim();
+    const rawAction = ctx.options.action.trim();
+
+    if (rawAction.includes('.')) {
+      const embed = new Embed({
+        title: "Formato de accion invalido",
+        description: "Usa el nombre completo del comando con espacios, por ejemplo \`warn add\`.",
+        color: EmbedColors.Red,
+      });
+
+      await ctx.write({ embeds: [embed] });
+      return;
+    }
+
+    const action = rawAction.toLowerCase();
     const uses = ctx.options.uses;
     const windowInput = ctx.options.window.trim();
     const windowSeconds = parseDuration(windowInput);
@@ -91,3 +104,4 @@ export default class RoleSetLimitCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+

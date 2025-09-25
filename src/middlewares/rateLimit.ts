@@ -1,165 +1,137 @@
-import type { GuildCommandContext } from "seyfert";
+﻿import type { GuildCommandContext } from "seyfert";
 import { Embed, createMiddleware } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-
-import {
-  consumeRoleRateLimits,
-  type RateLimitViolation,
-} from "@/modules/guild-roles";
+import { consumeRoleRateLimits, type RateLimitViolation } from "@/modules/guild-roles";
 
 /**
- * Middleware global que valida y consume los limites configurados para roles
- * administrados. Si el usuario supera el cupo permitido, detiene el comando y
- * muestra un mensaje al moderador.
+ * Middleware global que valida y consume los limites configurados para roles administrados.
+ * Usa el nombre completo del comando como clave unica para registrar los consumos.
  */
+async function collectRoleIds(context: GuildCommandContext): Promise<Set<string>> {
+  const member = context.member;
+  if (!member) return new Set();
 
-/** Describe la accion asociada a un comando monitoreado. */
-interface ActionDescriptor {
-  actionKey: string;
-  label: string;
-}
+  const roles = await member.roles.list();
 
-const ACTION_MAP: Record<string, ActionDescriptor> = {
-  kick: { actionKey: "kick", label: "kick" },
-  ban: { actionKey: "ban", label: "ban" },
-  "warn add": { actionKey: "warn.add", label: "warn add" },
-};
 
-/** Determina la accion monitoreada basada en el nombre completo del comando. */
-function resolveAction(context: GuildCommandContext): ActionDescriptor | null {
-  const name = context.fullCommandName?.toLowerCase().trim();
-  if (!name) return null;
-  return ACTION_MAP[name] ?? null;
-}
+  const ids = new Set<string>();
+  if (!roles) return ids;
 
-/**
- * Normaliza la estructura de roles del miembro y devuelve IDs unicos.
- */
-function extractRoleIds(context: GuildCommandContext): string[] {
-  const member = context.member as { roles?: unknown } | undefined;
-  const roles = member?.roles;
-  if (!roles) return [];
+  const push = (value: unknown) => {
+    if (typeof value === "string" && value) {
+      ids.add(value);
+      return;
+    }
 
-  const collect = (items: Iterable<unknown>): string[] => {
-    const buffer: string[] = [];
-    for (const value of items) {
-      if (typeof value === "string") {
-        buffer.push(value);
-        continue;
-      }
-      if (value && typeof value === "object") {
-        const id = (value as { id?: string; roleId?: string }).id ?? (value as { id?: string; roleId?: string }).roleId;
-        if (id) buffer.push(id);
+    if (value && typeof value === "object") {
+      const candidate = (value as { id?: unknown; roleId?: unknown }).id
+        ?? (value as { id?: unknown; roleId?: unknown }).roleId;
+      if (typeof candidate === "string" && candidate) {
+        ids.add(candidate);
       }
     }
-    return buffer;
+  };
+
+  const iterate = (iterable: Iterable<unknown>) => {
+    for (const entry of iterable) push(entry);
   };
 
   if (Array.isArray(roles)) {
-    return collect(roles);
+    iterate(roles);
+    return ids;
   }
 
-  if (typeof roles === "object") {
-    if (
-      (roles as { cache?: { values?: () => Iterable<unknown> } }).cache &&
-      typeof (roles as { cache: { values?: () => Iterable<unknown> } }).cache.values === "function"
-    ) {
-      return collect((roles as { cache: { values: () => Iterable<unknown> } }).cache.values());
+  if (typeof roles === "object" && roles) {
+    const cacheValues = (roles as { cache?: { values?: () => Iterable<unknown> } }).cache?.values;
+    if (typeof cacheValues === "function") {
+      iterate(cacheValues.call((roles as { cache: { values: () => Iterable<unknown> } }).cache));
+      return ids;
     }
-    if (typeof (roles as { values?: () => Iterable<unknown> }).values === "function") {
-      return collect((roles as { values: () => Iterable<unknown> }).values());
+
+    const values = (roles as { values?: () => Iterable<unknown> }).values;
+    if (typeof values === "function") {
+      iterate(values.call(roles));
+      return ids;
     }
+
     if (Symbol.iterator in (roles as object)) {
-      return collect(roles as Iterable<unknown>);
+      iterate(roles as Iterable<unknown>);
     }
   }
 
-  return [];
+  return ids;
 }
 
-/** Convierte una cantidad de segundos en formato legible para embeds. */
+/** Convierte segundos en texto legible para informar ventanas de tiempo. */
 function formatSeconds(seconds: number): string {
-  const safeSeconds = Math.max(0, Math.ceil(seconds));
-  const units: Array<{ label: string; value: number }> = [
-    { label: "h", value: 3600 },
-    { label: "m", value: 60 },
-  ];
+  const total = Math.max(0, Math.ceil(seconds));
+  const hours = Math.floor(total / 3_600);
+  const minutes = Math.floor((total % 3_600) / 60);
+  const secs = total % 60;
 
-  let remaining = safeSeconds;
   const parts: string[] = [];
-
-  for (const unit of units) {
-    if (remaining >= unit.value) {
-      const amount = Math.floor(remaining / unit.value);
-      remaining %= unit.value;
-      parts.push(`${amount}${unit.label}`);
-    }
-  }
-
-  if (!parts.length || remaining > 0) {
-    parts.push(`${remaining}s`);
-  }
-
+  if (hours) parts.push(`${hours}h`);
+  if (minutes) parts.push(`${minutes}m`);
+  if (!parts.length || secs) parts.push(`${secs}s`);
   return parts.join(" ");
 }
 
-/** Construye la respuesta informando que el limite fue alcanzado. */
-function buildLimitEmbed(action: ActionDescriptor, violation: RateLimitViolation): Embed {
-  const retryIn = Math.max(1, Math.ceil((violation.resetAt - Date.now()) / 1000));
+/** Construye la respuesta que se envia cuando el limite ya se consumio. */
+function buildLimitEmbed(actionKey: string, violation: RateLimitViolation): Embed {
+  const retrySeconds = Math.max(1, Math.ceil((violation.resetAt - Date.now()) / 1_000));
   const windowText = formatSeconds(violation.limit.perSeconds);
 
   return new Embed({
-    title: "Limite de rol alcanzado",
+    title: "Limite alcanzado",
     color: EmbedColors.Red,
     description: [
-      `El rol configurado \`${violation.roleKey}\` ya alcanzo el cupo para **${action.label}**.`,
-      `Limite definido: ${violation.limit.uses} usos cada ${windowText}.`,
-      `Puedes intentarlo nuevamente en ${formatSeconds(retryIn)}.`,
+      `El rol configurado \`${violation.roleKey}\` ya supero el cupo para **${actionKey}**.`,
+      `Limite vigente: ${violation.limit.uses} usos cada ${windowText}.`,
+      `Podras intentarlo nuevamente en ${formatSeconds(retrySeconds)}.`,
     ].join("\n"),
   });
 }
 
-/**
- * Middleware principal: valida limites, registra trazas y detiene el comando
- * cuando el cupo fue consumido.
- */
+/** Middleware global: aplica los limites de roles antes de ejecutar comandos. */
 export const rateLimit = createMiddleware<void>(async (middle) => {
   const context = middle.context as GuildCommandContext;
 
-  if (!context.inGuild() || !context.guildId) {
-    console.debug("[rate-limit] comando fuera de guild, omitiendo");
+  if (!context.inGuild()) {
     return middle.next();
   }
 
-  const action = resolveAction(context);
-  if (!action) {
-    console.debug(`[rate-limit] comando ${context.fullCommandName} no monitoreado, omitiendo`);
+  const actionKey = context.fullCommandName?.toLowerCase().trim();
+  if (!actionKey) {
     return middle.next();
   }
 
+  // console.debug(`[rate-limit] comando=${actionKey}`);
 
-  const roleIds = Array.from(new Set(extractRoleIds(context)));
-  if (!roleIds.length) {
-    console.debug("[rate-limit] usuario sin roles, omitiendo");
+  const roleIds = await collectRoleIds(context);
+  if (!roleIds.size) {
     return middle.next();
   }
 
-  
   const guildId = context.guildId;
+  if (!guildId) {
+    return middle.next();
+  }
 
   const result = await consumeRoleRateLimits({
     guildId,
-    actionKey: action.actionKey,
-    memberRoleIds: roleIds,
+    actionKey,
+    memberRoleIds: [...roleIds],
     database: context.db.instance,
   });
 
+  console.debug("[rate-limit] resultado", result);
 
   if (result.allowed) {
     return middle.next();
   }
 
-  const embed = buildLimitEmbed(action, result.violation);
+  const embed = buildLimitEmbed(actionKey, result.violation);
+
   await context.write({ embeds: [embed] });
 
   return middle.stop("rate-limit-blocked");
