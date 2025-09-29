@@ -2,7 +2,7 @@ import type { GuildCommandContext } from "seyfert";
 import { Declare, Embed, Options, SubCommand, createStringOption } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { clearRoleRateLimit, getRoleRateLimit } from "@/modules/guild-roles";
+import { clearRoleLimit, getRoleLimit } from "@/modules/guild-roles";
 
 const options = {
   key: createStringOption({
@@ -29,7 +29,7 @@ export default class RoleClearLimitCommand extends SubCommand {
     if (rawAction.includes('.')) {
       const embed = new Embed({
         title: "Formato de accion invalido",
-        description: "Usa el nombre completo del comando con espacios, por ejemplo \`warn add\`.",
+        description: "Usa el nombre completo del comando con espacios, por ejemplo `warn add`.",
         color: EmbedColors.Red,
       });
 
@@ -50,14 +50,14 @@ export default class RoleClearLimitCommand extends SubCommand {
       return;
     }
 
-    const existing = await getRoleRateLimit(
+    const existing = await getRoleLimit(
       ctx.guildId,
       key,
       action,
       ctx.db.instance,
     );
 
-    const record = await clearRoleRateLimit(
+    const record = await clearRoleLimit(
       ctx.guildId,
       key,
       action,
@@ -73,11 +73,13 @@ export default class RoleClearLimitCommand extends SubCommand {
         : `La accion **${action}** del rol **${key}** vuelve al comportamiento por defecto.`,
       color: existing === undefined ? EmbedColors.Orange : EmbedColors.Yellow,
       fields: [
-        { name: "Limites restantes", value: Object.keys(record.rateLimits).length.toString() },
+        {
+          name: "Limites restantes",
+          value: Object.keys(record.limits ?? {}).length.toString(),
+        },
       ],
     });
 
     await ctx.write({ embeds: [embed] });
   }
 }
-

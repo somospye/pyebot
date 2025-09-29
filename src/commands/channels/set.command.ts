@@ -12,8 +12,8 @@ import {
   CORE_CHANNEL_DEFINITIONS,
   CORE_CHANNEL_LABELS,
   type CoreChannelName,
-} from "@/modules/guild-channels/constants";
-import { GuildChannelService } from "@/modules/guild-channels/service";
+  setCoreChannel,
+} from "@/modules/guild-channels";
 
 const nameChoices = CORE_CHANNEL_DEFINITIONS.map((definition) => ({
   name: `${definition.name} (${definition.label})`,
@@ -40,11 +40,20 @@ const options = {
 @Options(options)
 export default class ChannelSetCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const service = GuildChannelService.from(ctx.db.instance);
+    const guildId = ctx.guildId;
+    if (!guildId) {
+      throw new Error("Guild ID is required to actualizar un canal requerido");
+    }
+
     const name = ctx.options.name as CoreChannelName;
     const channelId = String(ctx.options.channel.id);
 
-    const record = await service.setCoreChannel(ctx.guildId, name, channelId);
+    const record = await setCoreChannel(
+      guildId,
+      name,
+      channelId,
+      ctx.db.instance,
+    );
 
     const embed = new Embed({
       title: "Canal actualizado",
@@ -55,3 +64,4 @@ export default class ChannelSetCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+

@@ -1,19 +1,20 @@
-﻿import type { GuildCommandContext } from "seyfert";
+import type { GuildCommandContext } from "seyfert";
 import { Embed, createMiddleware } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { consumeRoleRateLimits, type RateLimitViolation } from "@/modules/guild-roles";
+import {
+  consumeRoleLimits,
+  resolveRoleActionPermission,
+  type RoleLimitBlock,
+  type ResolveRoleActionPermissionResult,
+} from "@/modules/guild-roles";
 
-/**
- * Middleware global que valida y consume los limites configurados para roles administrados.
- * Usa el nombre completo del comando como clave unica para registrar los consumos.
- */
-async function collectRoleIds(context: GuildCommandContext): Promise<Set<string>> {
+async function collectRoleIds(
+  context: GuildCommandContext,
+): Promise<Set<string>> {
   const member = context.member;
   if (!member) return new Set();
 
   const roles = await member.roles.list();
-
-
   const ids = new Set<string>();
   if (!roles) return ids;
 
@@ -24,8 +25,9 @@ async function collectRoleIds(context: GuildCommandContext): Promise<Set<string>
     }
 
     if (value && typeof value === "object") {
-      const candidate = (value as { id?: unknown; roleId?: unknown }).id
-        ?? (value as { id?: unknown; roleId?: unknown }).roleId;
+      const candidate =
+        (value as { id?: unknown; roleId?: unknown }).id ??
+        (value as { id?: unknown; roleId?: unknown }).roleId;
       if (typeof candidate === "string" && candidate) {
         ids.add(candidate);
       }
@@ -42,9 +44,15 @@ async function collectRoleIds(context: GuildCommandContext): Promise<Set<string>
   }
 
   if (typeof roles === "object" && roles) {
-    const cacheValues = (roles as { cache?: { values?: () => Iterable<unknown> } }).cache?.values;
+    const cacheValues = (
+      roles as { cache?: { values?: () => Iterable<unknown> } }
+    ).cache?.values;
     if (typeof cacheValues === "function") {
-      iterate(cacheValues.call((roles as { cache: { values: () => Iterable<unknown> } }).cache));
+      iterate(
+        cacheValues.call(
+          (roles as { cache: { values: () => Iterable<unknown> } }).cache,
+        ),
+      );
       return ids;
     }
 
@@ -62,7 +70,6 @@ async function collectRoleIds(context: GuildCommandContext): Promise<Set<string>
   return ids;
 }
 
-/** Convierte segundos en texto legible para informar ventanas de tiempo. */
 function formatSeconds(seconds: number): string {
   const total = Math.max(0, Math.ceil(seconds));
   const hours = Math.floor(total / 3_600);
@@ -76,24 +83,46 @@ function formatSeconds(seconds: number): string {
   return parts.join(" ");
 }
 
-/** Construye la respuesta que se envia cuando el limite ya se consumio. */
-function buildLimitEmbed(actionKey: string, violation: RateLimitViolation): Embed {
-  const retrySeconds = Math.max(1, Math.ceil((violation.resetAt - Date.now()) / 1_000));
-  const windowText = formatSeconds(violation.limit.perSeconds);
+function buildOverrideDeniedEmbed(
+  actionKey: string,
+  decision: ResolveRoleActionPermissionResult,
+): Embed {
+  const lines: string[] = [
+    `La accion **${actionKey}** esta denegada por la configuracion del bot.`,
+  ];
+
+  if (decision.roleKey) {
+    lines.push(
+      `Override aplicado por la clave de rol \`${decision.roleKey}\`.`,
+    );
+  }
+
+  return new Embed({
+    title: "Accion bloqueada",
+    color: EmbedColors.Red,
+    description: lines.join("\n"),
+  });
+}
+
+function buildBlockEmbed(actionKey: string, block: RoleLimitBlock): Embed {
+  const retrySeconds = Math.max(
+    1,
+    Math.ceil((block.resetAt - Date.now()) / 1_000),
+  );
+  const windowText = formatSeconds(block.windowSeconds);
 
   return new Embed({
     title: "Limite alcanzado",
     color: EmbedColors.Red,
     description: [
-      `El rol configurado \`${violation.roleKey}\` ya supero el cupo para **${actionKey}**.`,
-      `Limite vigente: ${violation.limit.uses} usos cada ${windowText}.`,
+      `El rol configurado \`${block.roleKey}\` ya supero el cupo para **${actionKey}**.`,
+      `Limite vigente: ${block.limit.limit} usos cada ${windowText}.`,
       `Podras intentarlo nuevamente en ${formatSeconds(retrySeconds)}.`,
     ].join("\n"),
   });
 }
 
-/** Middleware global: aplica los limites de roles antes de ejecutar comandos. */
-export const rateLimit = createMiddleware<void>(async (middle) => {
+export const moderationLimit = createMiddleware<void>(async (middle) => {
   const context = middle.context as GuildCommandContext;
 
   if (!context.inGuild()) {
@@ -105,8 +134,6 @@ export const rateLimit = createMiddleware<void>(async (middle) => {
     return middle.next();
   }
 
-  // console.debug(`[rate-limit] comando=${actionKey}`);
-
   const roleIds = await collectRoleIds(context);
   if (!roleIds.size) {
     return middle.next();
@@ -117,22 +144,36 @@ export const rateLimit = createMiddleware<void>(async (middle) => {
     return middle.next();
   }
 
-  const result = await consumeRoleRateLimits({
+  const overrideDecision = await resolveRoleActionPermission({
+    guildId,
+    actionKey,
+    memberRoleIds: [...roleIds],
+    hasDiscordPermission: true,
+    database: context.db.instance,
+  });
+
+  if (!overrideDecision.allowed) {
+    const embed = buildOverrideDeniedEmbed(actionKey, overrideDecision);
+    await context.write({ embeds: [embed] });
+    return middle.stop("moderation-override-blocked");
+  }
+
+  const result = await consumeRoleLimits({
     guildId,
     actionKey,
     memberRoleIds: [...roleIds],
     database: context.db.instance,
   });
 
-  console.debug("[rate-limit] resultado", result);
+  console.debug("[moderation-limit] resultado", result);
 
   if (result.allowed) {
     return middle.next();
   }
 
-  const embed = buildLimitEmbed(actionKey, result.violation);
+  const embed = buildBlockEmbed(actionKey, result.violation);
 
   await context.write({ embeds: [embed] });
 
-  return middle.stop("rate-limit-blocked");
+  return middle.stop("moderation-limit-blocked");
 });

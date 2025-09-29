@@ -9,7 +9,8 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { setRoleRateLimit } from "@/modules/guild-roles";
+import { describeWindow, saveRoleLimit } from "@/modules/guild-roles";
+import { LIMIT_WINDOWS, type LimitWindow } from "@/schemas/guild";
 import { parseDuration } from "@/utils/duration";
 
 const options = {
@@ -47,7 +48,7 @@ export default class RoleSetLimitCommand extends SubCommand {
     if (rawAction.includes('.')) {
       const embed = new Embed({
         title: "Formato de accion invalido",
-        description: "Usa el nombre completo del comando con espacios, por ejemplo \`warn add\`.",
+        description: "Usa el nombre completo del comando con espacios, por ejemplo `warn add`.",
         color: EmbedColors.Red,
       });
 
@@ -82,12 +83,34 @@ export default class RoleSetLimitCommand extends SubCommand {
       return;
     }
 
-    // Guarda el limite en la base de datos.
-    await setRoleRateLimit(
+    const windowMapping: Record<LimitWindow, number> = {
+      "10m": 10 * 60,
+      "1h": 60 * 60,
+      "6h": 6 * 60 * 60,
+      "24h": 24 * 60 * 60,
+      "7d": 7 * 24 * 60 * 60,
+    };
+
+    const resolveWindow = (seconds: number): LimitWindow | null => {
+      for (const option of LIMIT_WINDOWS) {
+        if (seconds <= windowMapping[option]) {
+          return option;
+        }
+      }
+      return LIMIT_WINDOWS[LIMIT_WINDOWS.length - 1] ?? null;
+    };
+
+    const limitRecord = {
+      limit: uses,
+      window: resolveWindow(windowSeconds),
+      windowSeconds,
+    } as const;
+
+    const record = await saveRoleLimit(
       ctx.guildId,
       key,
       action,
-      { uses, perSeconds: windowSeconds },
+      limitRecord,
       ctx.db.instance,
     );
 
@@ -97,11 +120,17 @@ export default class RoleSetLimitCommand extends SubCommand {
       fields: [
         { name: "Rol", value: key },
         { name: "Accion", value: action },
-        { name: "Limite", value: `${uses} usos cada ${windowSeconds}s` },
+        {
+          name: "Limite",
+          value: `${uses} usos cada ${describeWindow(limitRecord)}`,
+        },
+        {
+          name: "Limites configurados",
+          value: Object.keys(record.limits ?? {}).length.toString(),
+        },
       ],
     });
 
     await ctx.write({ embeds: [embed] });
   }
 }
-

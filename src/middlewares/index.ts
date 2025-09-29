@@ -1,7 +1,7 @@
-﻿import CooldownMiddleware from "./cooldown";
-import { rateLimit } from "./rateLimit";
+import CooldownMiddleware from "./cooldown";
+import { moderationLimit } from "./moderationLimit";
 
 export const middlewares = {
   cooldown: CooldownMiddleware,
-  rateLimit,
+  moderationLimit,
 };

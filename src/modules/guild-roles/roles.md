@@ -60,6 +60,9 @@ Dentro de `/roles` se cargan subcomandos que envuelven estas utilidades:
 - `/roles list`: muestra los roles administrados y sus limites activos.
 - `/roles set-limit`: define un limite puntual (`uses` + `perSeconds`).
 - `/roles clear-limit`: borra el limite de una accion para volver al comportamiento base.
+- `/roles dashboard`: abre un panel efimero con selects, botones y modales para editar
+  el nombre visible, vincular un rol de Discord, ajustar limites y configurar overrides de
+  alcance sin abandonar Discord. Utiliza sesiones de 5 minutos que pueden reabrirse.
 
 Las acciones utilizadas por los comandos internos del bot son:
 

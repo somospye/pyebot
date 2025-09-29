@@ -7,7 +7,7 @@ import {
   createStringOption,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { GuildChannelService } from "@/modules/guild-channels/service";
+import { removeManagedChannel } from "@/modules/guild-channels";
 
 const options = {
   id: createStringOption({
@@ -24,15 +24,22 @@ const options = {
 @Options(options)
 export default class ChannelRemoveCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const service = GuildChannelService.from(ctx.db.instance);
-    const identifier = ctx.options.id.trim();
+    const guildId = ctx.guildId;
+    if (!guildId) {
+      throw new Error("Guild ID is required to eliminar un canal opcional");
+    }
 
+    const identifier = ctx.options.id.trim();
     if (!identifier) {
       await ctx.write({ content: "[!] Debes indicar un identificador valido." });
       return;
     }
 
-    const removed = await service.removeManagedChannel(ctx.guildId, identifier);
+    const removed = await removeManagedChannel(
+      guildId,
+      identifier,
+      ctx.db.instance,
+    );
 
     if (!removed) {
       await ctx.write({ content: "[!] No se encontro un canal con ese identificador." });

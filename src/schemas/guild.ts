@@ -5,20 +5,35 @@ import type { CoreChannelName } from "@/modules/guild-channels/constants";
 /** Identifier for a capability we expose to managed roles. */
 export type RoleCapabilityKey = string;
 
-/** Format "N uses allowed each Y seconds". */
-export interface RoleRateLimitRecord {
-  uses: number;
-  perSeconds: number;
+export type RoleCommandOverride = "inherit" | "allow" | "deny";
+export type RoleCommandOverrideMap = Record<RoleCapabilityKey, RoleCommandOverride>;
+
+export const LIMIT_WINDOWS = ["10m", "1h", "6h", "24h", "7d"] as const;
+export type LimitWindow = (typeof LIMIT_WINDOWS)[number];
+
+export interface RoleLimitRecord {
+  limit: number;
+  window: LimitWindow | null;
+  /** Optional precise window (in seconds) for backwards compatibility or future extensions. */
+  windowSeconds?: number | null;
 }
 
-export type RoleRateLimitMap = Record<RoleCapabilityKey, RoleRateLimitRecord | null>;
+export type RoleLimitMap = Partial<Record<RoleCapabilityKey, RoleLimitRecord>>;
 
 /** Persisted configuration for a guild role. */
 export interface GuildRoleRecord {
+  /** Stable human label shown in the dashboard. */
+  label: string;
   /** Discord role this configuration operates on. */
-  roleId: string;
+  discordRoleId: string | null;
   /** Custom limitations applied over Discord permissions. */
-  rateLimits: RoleRateLimitMap;
+  limits: RoleLimitMap;
+  /** Overrides for allowing/denying moderation actions handled by the bot. */
+  reach: RoleCommandOverrideMap;
+  /** Last moderator updating the configuration. */
+  updatedBy: string | null;
+  /** Timestamp in ISO format representing the last update. */
+  updatedAt: string | null;
 }
 
 export type GuildRolesRecord = Record<string, GuildRoleRecord>;
@@ -61,3 +76,4 @@ export const guilds = pgTable("guilds", {
 
 export type Guild = InferSelectModel<typeof guilds>;
 export type NewGuild = InferInsertModel<typeof guilds>;
+

@@ -1,4 +1,4 @@
-﻿import "module-alias/register";
+import "module-alias/register";
 import "dotenv/config";
 
 import type { ParseClient, ParseMiddlewares } from "seyfert";
@@ -25,7 +25,7 @@ const context = extendContext((interaction) => {
 
 const client = new Client({
   context,
-  globalMiddlewares: ["rateLimit"],
+  globalMiddlewares: ["moderationLimit"],
 });
 
 
@@ -44,3 +44,4 @@ declare module "seyfert" {
   interface ExtendContext extends ReturnType<typeof context> {}
   interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> {}
 }
+

@@ -46,7 +46,12 @@ export default class RoleSetCommand extends SubCommand {
 
     const { record } = await upsertRole(
       ctx.guildId,
-      { id: key, roleId },
+      {
+        key,
+        label: key,
+        discordRoleId: roleId,
+        updatedBy: ctx.author.id,
+      },
       ctx.db.instance,
     );
 
@@ -55,8 +60,14 @@ export default class RoleSetCommand extends SubCommand {
       color: EmbedColors.Green,
       fields: [
         { name: "Clave", value: key },
-        { name: "Rol", value: `<@&${record.roleId}>` },
-        { name: "Limites configurados", value: Object.keys(record.rateLimits).length.toString() },
+        {
+          name: "Rol",
+          value: record.discordRoleId ? `<@&${record.discordRoleId}>` : "Sin asignar",
+        },
+        {
+          name: "Limites configurados",
+          value: Object.keys(record.limits ?? {}).length.toString(),
+        },
       ],
     });
 
