@@ -1,7 +1,7 @@
 import "module-alias/register";
 import "dotenv/config";
 
-import type { ParseClient, ParseMiddlewares, UsingClient } from "seyfert";
+import type { ParseClient, ParseMiddlewares } from "seyfert";
 import { Client, extendContext } from "seyfert";
 import { db } from "@/db";
 import { CooldownManager } from "@/modules/cooldown";
@@ -23,21 +23,25 @@ const context = extendContext((interaction) => {
   };
 });
 
-const client = new Client({ context }) as UsingClient & Client;
-client.start().then(() => {
-  client.uploadCommands({ cachePath: "./commands.json" });
-  client.cooldown = new CooldownManager(client);
+const client = new Client({
+  context,
+  globalMiddlewares: ["moderationLimit"],
 });
 
+
 client.setServices({
-  middlewares: middlewares,
+  middlewares,
 });
+
+client
+  .start()
+  .then(() => client.uploadCommands({ cachePath: "./commands.json" }));
 
 declare module "seyfert" {
   interface UsingClient extends ParseClient<Client<true>> {
     cooldown: CooldownManager;
   }
   interface ExtendContext extends ReturnType<typeof context> {}
-  interface RegisteredMiddlewares
-    extends ParseMiddlewares<typeof middlewares> {}
+  interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> {}
 }
+

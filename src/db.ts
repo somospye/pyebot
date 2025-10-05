@@ -15,3 +15,8 @@ const pool = new pg.Pool({
 });
 
 export const db = drizzle(pool);
+
+// Ping the database to ensure the connection is valid
+pool.query("SELECT 1").catch((err) => {
+  console.error("\n[ DATABASE NOT CONNECTED ]\n", err);
+});

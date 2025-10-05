@@ -9,7 +9,7 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 import { Cooldown, CooldownType } from "@/modules/cooldown";
-import { GuildChannelsRepository } from "@/modules/guild-channels";
+import { getGuildChannels } from "@/modules/guild-channels";
 
 const options = {
   suggest: createStringOption({
@@ -49,8 +49,8 @@ export default class SuggestCommand extends Command {
       return;
     }
 
-    const guild = await new GuildChannelsRepository().getGuild(guildId);
-    const suggest_channel = guild?.channels.managed.suggestions;
+    const channels = await getGuildChannels(guildId, ctx.db.instance);
+    const suggest_channel = channels.managed.suggestions;
 
     if (!suggest_channel) {
       console.error("Suggest: no se pudo obtener canal de sugerencias");
@@ -98,3 +98,5 @@ export default class SuggestCommand extends Command {
     context.editOrReply({ content: error });
   }
 }
+
+

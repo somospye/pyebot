@@ -8,6 +8,7 @@ export default config.bot({
     base: "dist",
     commands: "commands",
     events: "events",
+    components: "components",
   },
   token: process.env.TOKEN ?? "",
   intents: ["Guilds", "GuildMessages", "MessageContent"], // faltan agregar más intents

@@ -73,3 +73,16 @@ export async function removeWarn(discordId: string, warnId: string) {
     .set({ warns: filteredWarns })
     .where(eq(users.id, discordId));
 }
+
+export async function clearWarns(discordId: string) {
+  const exists = await has(discordId);
+  if (!exists) {
+    await create(discordId);
+    return;
+  }
+
+  await db
+    .update(users)
+    .set({ warns: [] })
+    .where(eq(users.id, discordId));
+}

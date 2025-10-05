@@ -8,7 +8,7 @@ import {
   createStringOption,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { GuildChannelService } from "@/modules/guild-channels/service";
+import { addManagedChannel } from "@/modules/guild-channels";
 
 const options = {
   label: createStringOption({
@@ -29,11 +29,20 @@ const options = {
 @Options(options)
 export default class ChannelAddCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const service = GuildChannelService.from(ctx.db.instance);
+    const guildId = ctx.guildId;
+    if (!guildId) {
+      throw new Error("Guild ID is required to registrar un canal opcional");
+    }
+
     const label = ctx.options.label;
     const channelId = String(ctx.options.channel.id);
 
-    const record = await service.addManagedChannel(ctx.guildId, label, channelId);
+    const record = await addManagedChannel(
+      guildId,
+      label,
+      channelId,
+      ctx.db.instance,
+    );
 
     const embed = new Embed({
       title: "Canal opcional registrado",
@@ -50,3 +59,5 @@ export default class ChannelAddCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+
+

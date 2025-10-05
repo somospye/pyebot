@@ -5,7 +5,7 @@ import { Cache } from "@/utils/cache";
 import { recognizeText } from "@/services/ocr";
 import { registerAutoModDebug } from "@/debug/automod";
 
-import { GuildChannelsRepository } from "@/modules/guild-channels";
+import { getGuildChannels } from "@/modules/guild-channels";
 type AttachmentLike = {
   contentType?: string | null;
 
@@ -22,8 +22,8 @@ export class AutoModSystem {
   // La caché evita rehacer hashes y nos deja recordar imágenes marcadas un tiempo.
   private tempStorage = new Cache({
     persistPath: "./cache_automod.json",
-    persistIntervalMs: 5 * 60 * 1000, // every 5 minutes
-    cleanupIntervalMs: 60 * 60 * 1000, // every hour
+    persistIntervalMs: 5 * 60 * 1000, // cada 5 minutos
+    cleanupIntervalMs: 60 * 60 * 1000, // cada hora
   });
   constructor(client: UsingClient) {
     this.client = client;
@@ -177,15 +177,15 @@ export class AutoModSystem {
       console.error("AutoModSystem: no se pudo obtener ID de la guild del mensaje al tratar de notificar al staff.");
       return;
     }
-    let guild = await (new GuildChannelsRepository()).getGuild(guildId);
-    let staff_channel = guild?.channels.core.staff;
-    if (!staff_channel) {
+    const channels = await getGuildChannels(guildId);
+    const staffChannel = channels.core.staff;
+    if (!staffChannel) {
       console.error("AutoModSystem: no se pudo obtener canal de staff de la guild al tratar de notificar al staff.");
       return;
     }
     // TODO: botones para borrar el mensaje directamente y saltar al mensaje
     await this.client.messages
-      .write(staff_channel.channelId, {
+      .write(staffChannel.channelId, {
         content: `**Advertencia:** ${warning}. ${message.url ?? ""}`,
       })
       .catch((err: Error) =>
@@ -197,3 +197,6 @@ export class AutoModSystem {
 // Si DEBUG incluye "automod" (p. ej. DEBUG=automod), se activa la instrumentación.
 // @ts-ignore
 registerAutoModDebug(AutoModSystem);
+
+
+
