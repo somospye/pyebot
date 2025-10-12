@@ -2,6 +2,7 @@ import type { Guild, GuildCommandContext } from "seyfert";
 import { createUserOption, Declare, Embed, Options, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 import type { Warn } from "@/schemas/user";
+import { getMemberName } from "@/utils/guild";
 
 const options = {
   user: createUserOption({
@@ -53,18 +54,9 @@ export default class ListWarnCommand extends SubCommand {
     warns: Warn[],
     guild: Awaited<Guild<"cached" | "api">>,
   ): Promise<string> {
-    const fetchMemberName = async (id: string) => {
-      try {
-        const member = await guild.members.fetch(id);
-        return member.name;
-      } catch {
-        return "Desconocido";
-      }
-    };
-
     const warnEntries = await Promise.all(
       warns.map(async (warn) => {
-        const moderator = await fetchMemberName(warn.moderator);
+        const moderator = await getMemberName(warn.moderator, guild);
         const date = new Date(warn.timestamp).toLocaleString();
 
         const warnId = warn.warn_id.toUpperCase();

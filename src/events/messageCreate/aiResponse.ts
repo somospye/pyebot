@@ -12,6 +12,16 @@ onMessageCreate(async (message, client) => {
     return;
   }
 
+  // Si el bot no fue menciado directamente, no responder
+  if (
+    // Si el ID del bot no esta en las menciones
+    !message.mentions.users.find((user) => user.id === client.applicationId) 
+    
+    // Y el mensaje no es una respuesta a un mensaje del bot
+    && message.referencedMessage?.author?.id !== client.applicationId) {
+    return;
+  }
+
   const wasMentioned = message.mentions.users.find((user) => user.id === client.applicationId);
   const shouldReply =
     Boolean(wasMentioned) ||

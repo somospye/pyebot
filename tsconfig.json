@@ -25,6 +25,6 @@
     },
     "stripInternal": true
   },
-  "exclude": ["node_modules"],
-  "include": ["src/**/*"]
+  "exclude": ["node_modules", "__local"],
+  "include": ["src/**/*", "__local/modal_handler.ts"]
 }

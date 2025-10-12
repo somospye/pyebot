@@ -1,3 +1,5 @@
+import "@/modules/ui/seyfert-augmentations"; // ! Augmentations must be imported first to take effect
+
 import "module-alias/register";
 import "dotenv/config";
 
