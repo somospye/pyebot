@@ -25,6 +25,6 @@
     },
     "stripInternal": true
   },
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "__local"],
   "include": ["src/**/*"]
 }

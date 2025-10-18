@@ -38,33 +38,35 @@ export class GuildLogger {
     return embed;
   }
 
-  async messageLog(options: EmbedOptions) {
+  private async sendLog(
+    channelId: string,
+    options: EmbedOptions,
+  ): Promise<void> {
     const embed = this.buildEmbed(options);
-    this.client.messages.write(CHANNELS_ID.messageLogs, { embeds: [embed] });
+    await this.client.messages.write(channelId, { embeds: [embed] });
+  }
+
+  async messageLog(options: EmbedOptions) {
+    return this.sendLog(CHANNELS_ID.messageLogs, options);
   }
 
   async voiceLog(options: EmbedOptions) {
-    const embed = this.buildEmbed(options);
-    this.client.messages.write(CHANNELS_ID.voiceLogs, { embeds: [embed] });
+    return this.sendLog(CHANNELS_ID.voiceLogs, options);
   }
 
   async ticketLog(options: EmbedOptions) {
-    const embed = this.buildEmbed(options);
-    this.client.messages.write(CHANNELS_ID.ticketLogs, { embeds: [embed] });
+    return this.sendLog(CHANNELS_ID.ticketLogs, options);
   }
 
   async pointLog(options: EmbedOptions) {
-    const embed = this.buildEmbed(options);
-    this.client.messages.write(CHANNELS_ID.pointsLog, { embeds: [embed] });
+    return this.sendLog(CHANNELS_ID.pointsLog, options);
   }
 
   async generalLog(options: EmbedOptions) {
-    const embed = this.buildEmbed(options);
-    this.client.messages.write(CHANNELS_ID.generalLogs, { embeds: [embed] });
+    return this.sendLog(CHANNELS_ID.generalLogs, options);
   }
 
   async banSanctionLog(options: EmbedOptions) {
-    const embed = this.buildEmbed(options);
-    this.client.messages.write(CHANNELS_ID.banSanctions, { embeds: [embed] });
+    return this.sendLog(CHANNELS_ID.banSanctions, options);
   }
 }

@@ -3,7 +3,6 @@ import { spamFilterList, scamFilterList } from "@/constants/automod";
 import { phash } from "@/utils/phash";
 import { Cache } from "@/utils/cache";
 import { recognizeText } from "@/services/ocr";
-import { registerAutoModDebug } from "@/debug/automod";
 
 import { getGuildChannels } from "@/modules/guild-channels";
 type AttachmentLike = {
@@ -193,10 +192,4 @@ export class AutoModSystem {
       );
   }
 }
-
-// Si DEBUG incluye "automod" (p. ej. DEBUG=automod), se activa la instrumentación.
-// @ts-ignore
-registerAutoModDebug(AutoModSystem);
-
-
 

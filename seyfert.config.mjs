@@ -11,5 +11,27 @@ export default config.bot({
     components: "components",
   },
   token: process.env.TOKEN ?? "",
-  intents: ["Guilds", "GuildMessages", "MessageContent"], // faltan agregar más intents
+  intents: [
+    "Guilds",
+    "GuildMembers",
+    "GuildModeration",
+    "GuildExpressions",
+    "GuildIntegrations",
+    "GuildWebhooks",
+    "GuildInvites",
+    "GuildVoiceStates",
+    "GuildPresences",
+    "GuildMessages",
+    "GuildMessageReactions",
+    "GuildMessageTyping",
+    "DirectMessages",
+    "DirectMessageReactions",
+    "DirectMessageTyping",
+    "MessageContent",
+    "GuildScheduledEvents",
+    "AutoModerationConfiguration",
+    "AutoModerationExecution",
+    "GuildMessagePolls",
+    "DirectMessagePolls",
+  ], // all gateway intents
 });
