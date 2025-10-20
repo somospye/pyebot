@@ -149,7 +149,6 @@ export const moderationLimit = createMiddleware<void>(async (middle) => {
     actionKey,
     memberRoleIds: [...roleIds],
     hasDiscordPermission: true,
-    database: context.db.instance,
   });
 
   if (!overrideDecision.allowed) {
@@ -162,7 +161,6 @@ export const moderationLimit = createMiddleware<void>(async (middle) => {
     guildId,
     actionKey,
     memberRoleIds: [...roleIds],
-    database: context.db.instance,
   });
 
   console.debug("[moderation-limit] resultado", result);
@@ -177,3 +175,4 @@ export const moderationLimit = createMiddleware<void>(async (middle) => {
 
   return middle.stop("moderation-limit-blocked");
 });
+

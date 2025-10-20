@@ -2,7 +2,11 @@ import type { GuildCommandContext } from "seyfert";
 import { Declare, Embed, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { describeWindow, listRoles } from "@/modules/guild-roles";
+import {
+  buildModerationSummary,
+  fetchManagedRoles,
+  requireGuildContext,
+} from "./shared";
 
 // Muestra el estado actual de los roles administrados y sus limites.
 @Declare({
@@ -11,9 +15,12 @@ import { describeWindow, listRoles } from "@/modules/guild-roles";
 })
 export default class RoleListCommand extends SubCommand {
   async run(ctx: GuildCommandContext) {
-    const roles = await listRoles(ctx.guildId, ctx.db.instance);
+    const context = await requireGuildContext(ctx);
+    if (!context) return;
 
-    if (roles.length === 0) {
+    const roles = await fetchManagedRoles(context.guildId);
+
+    if (!roles.length) {
       const empty = new Embed({
         title: "Roles administrados",
         description: "No hay configuraciones registradas.",
@@ -23,40 +30,17 @@ export default class RoleListCommand extends SubCommand {
       return;
     }
 
-    const fields = roles.map(({ roleKey, record }) => {
-      const limits = Object.entries(record.limits ?? {});
-      const limitText = limits.length
-        ? limits
-            .map(([action, limit]) => {
-              if (!limit || !limit.limit || limit.limit <= 0) {
-                return `- **${action}** -> deshabilitado`;
-              }
-              return `- **${action}** -> ${limit.limit} usos cada ${describeWindow(limit)}`;
-            })
-            .join("\n")
-        : "Sin limites configurados";
-
-      const overrides = Object.entries(record.reach ?? {});
-      const overrideText = overrides.length
-        ? overrides
-            .map(([action, override]) => `- **${action}** -> ${override}`)
-            .join("\n")
-        : "Todos heredan permisos de Discord";
-
+    const fields = roles.map((snapshot) => {
       const value = [
-        record.discordRoleId
-          ? `Rol vinculado: <@&${record.discordRoleId}>`
+        snapshot.discordRoleId
+          ? `Rol vinculado: <@&${snapshot.discordRoleId}>`
           : "Rol vinculado: Sin asignar",
         "",
-        "**Overrides**",
-        overrideText,
-        "",
-        "**Limites**",
-        limitText,
+        buildModerationSummary(snapshot),
       ].join("\n");
 
       return {
-        name: `${roleKey} · ${record.label}`,
+        name: `${snapshot.key} - ${snapshot.label}`,
         value,
       };
     });
@@ -70,3 +54,4 @@ export default class RoleListCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+

@@ -1,17 +1,23 @@
 import type { GuildCommandContext } from "seyfert";
 import {
+  createIntegerOption,
+  createStringOption,
   Declare,
   Embed,
   Options,
   SubCommand,
-  createIntegerOption,
-  createStringOption,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
+import { saveRoleLimit } from "@/modules/guild-roles";
 
-import { describeWindow, saveRoleLimit } from "@/modules/guild-roles";
-import { LIMIT_WINDOWS, type LimitWindow } from "@/schemas/guild";
-import { parseDuration } from "@/utils/duration";
+import {
+  buildLimitRecord,
+  findManagedRole,
+  formatLimitRecord,
+  parseLimitWindowInput,
+  requireGuildContext,
+  resolveActionInput,
+} from "./shared";
 
 const options = {
   key: createStringOption({
@@ -19,7 +25,7 @@ const options = {
     required: true,
   }),
   action: createStringOption({
-    description: "Accion identificada por el bot (ej. kick, ban, warn add)",
+    description: "Accion de moderacion (kick, ban, warn, timeout, purge)",
     required: true,
   }),
   uses: createIntegerOption({
@@ -28,7 +34,7 @@ const options = {
     min_value: 1,
   }),
   window: createStringOption({
-    description: "Ventana de tiempo (p. ej. 10m, 24h, 90s)",
+    description: "Ventana de tiempo (p. ej. 10m, 1h, 6h, 24h, 7d)",
     required: true,
     min_length: 1,
   }),
@@ -42,13 +48,14 @@ const options = {
 @Options(options)
 export default class RoleSetLimitCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
+    const context = await requireGuildContext(ctx);
+    if (!context) return;
+
     const key = ctx.options.key.trim();
-    const rawAction = ctx.options.action.trim();
-
-    if (rawAction.includes('.')) {
+    if (!key) {
       const embed = new Embed({
-        title: "Formato de accion invalido",
-        description: "Usa el nombre completo del comando con espacios, por ejemplo `warn add`.",
+        title: "Clave invalida",
+        description: "Indica la clave del rol administrado que deseas editar.",
         color: EmbedColors.Red,
       });
 
@@ -56,15 +63,11 @@ export default class RoleSetLimitCommand extends SubCommand {
       return;
     }
 
-    const action = rawAction.toLowerCase();
-    const uses = ctx.options.uses;
-    const windowInput = ctx.options.window.trim();
-    const windowSeconds = parseDuration(windowInput);
-
-    if (!key || !action) {
+    const actionResult = resolveActionInput(ctx.options.action);
+    if ("error" in actionResult) {
       const embed = new Embed({
-        title: "Datos incompletos",
-        description: "La clave y la accion deben contener al menos un caracter.",
+        title: "Accion invalida",
+        description: actionResult.error,
         color: EmbedColors.Red,
       });
 
@@ -72,10 +75,12 @@ export default class RoleSetLimitCommand extends SubCommand {
       return;
     }
 
-    if (windowSeconds === null) {
+    const parsedWindow = parseLimitWindowInput(ctx.options.window);
+    if (!parsedWindow) {
       const embed = new Embed({
         title: "Ventana invalida",
-        description: "Usa un numero positivo o formatos como 10m, 24h, 90s.",
+        description:
+          "Usa un formato valido como 10m, 1h, 6h, 24h o 7d para definir la ventana.",
         color: EmbedColors.Red,
       });
 
@@ -83,50 +88,48 @@ export default class RoleSetLimitCommand extends SubCommand {
       return;
     }
 
-    const windowMapping: Record<LimitWindow, number> = {
-      "10m": 10 * 60,
-      "1h": 60 * 60,
-      "6h": 6 * 60 * 60,
-      "24h": 24 * 60 * 60,
-      "7d": 7 * 24 * 60 * 60,
-    };
+    const role = await findManagedRole(context.guildId, key);
+    if (!role) {
+      const embed = new Embed({
+        title: "Rol no encontrado",
+        description:
+          "No existe una configuracion registrada con esa clave. Verifica el nombre e intentalo nuevamente.",
+        color: EmbedColors.Red,
+      });
 
-    const resolveWindow = (seconds: number): LimitWindow | null => {
-      for (const option of LIMIT_WINDOWS) {
-        if (seconds <= windowMapping[option]) {
-          return option;
-        }
-      }
-      return LIMIT_WINDOWS[LIMIT_WINDOWS.length - 1] ?? null;
-    };
+      await ctx.write({ embeds: [embed] });
+      return;
+    }
 
-    const limitRecord = {
-      limit: uses,
-      window: resolveWindow(windowSeconds),
-      windowSeconds,
-    } as const;
+    const action = actionResult.action;
+    const uses = Math.max(0, Math.floor(ctx.options.uses));
+    const limitRecord = buildLimitRecord(uses, parsedWindow.window);
 
-    const record = await saveRoleLimit(
-      ctx.guildId,
-      key,
-      action,
+    await saveRoleLimit(
+      context.guildId,
+      role.key,
+      action.key,
       limitRecord,
-      ctx.db.instance,
     );
+
+    const updated = await findManagedRole(context.guildId, key);
+    const configuredLimits = updated
+      ? Object.keys(updated.limits ?? {}).length
+      : 0;
 
     const embed = new Embed({
       title: "Limite actualizado",
       color: EmbedColors.Blurple,
       fields: [
         { name: "Rol", value: key },
-        { name: "Accion", value: action },
+        { name: "Accion", value: action.key },
         {
           name: "Limite",
-          value: `${uses} usos cada ${describeWindow(limitRecord)}`,
+          value: formatLimitRecord(limitRecord),
         },
         {
           name: "Limites configurados",
-          value: Object.keys(record.limits ?? {}).length.toString(),
+          value: configuredLimits.toString(),
         },
       ],
     });
@@ -134,3 +137,4 @@ export default class RoleSetLimitCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+

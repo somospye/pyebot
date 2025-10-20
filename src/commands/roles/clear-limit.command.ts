@@ -1,8 +1,21 @@
 import type { GuildCommandContext } from "seyfert";
-import { Declare, Embed, Options, SubCommand, createStringOption } from "seyfert";
+import {
+  createStringOption,
+  Declare,
+  Embed,
+  Options,
+  SubCommand,
+} from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { clearRoleLimit, getRoleLimit } from "@/modules/guild-roles";
+import { clearRoleLimit } from "@/modules/guild-roles";
+
+import {
+  findManagedRole,
+  formatLimitRecord,
+  requireGuildContext,
+  resolveActionInput,
+} from "./shared";
 
 const options = {
   key: createStringOption({
@@ -10,7 +23,7 @@ const options = {
     required: true,
   }),
   action: createStringOption({
-    description: "Accion cuyo limite se desea limpiar",
+    description: "Accion de moderacion cuyo limite se desea limpiar",
     required: true,
   }),
 };
@@ -23,13 +36,28 @@ const options = {
 @Options(options)
 export default class RoleClearLimitCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
+    const context = await requireGuildContext(ctx);
+    if (!context) return;
+
     const key = ctx.options.key.trim();
+    if (!key) {
+      const embed = new Embed({
+        title: "Clave invalida",
+        description: "Indica la clave del rol administrado que deseas editar.",
+        color: EmbedColors.Red,
+      });
+
+      await ctx.write({ embeds: [embed] });
+      return;
+    }
+
     const rawAction = ctx.options.action.trim();
 
-    if (rawAction.includes('.')) {
+    const resolvedAction = resolveActionInput(rawAction);
+    if ("error" in resolvedAction) {
       const embed = new Embed({
-        title: "Formato de accion invalido",
-        description: "Usa el nombre completo del comando con espacios, por ejemplo `warn add`.",
+        title: "Accion invalida",
+        description: resolvedAction.error,
         color: EmbedColors.Red,
       });
 
@@ -37,12 +65,14 @@ export default class RoleClearLimitCommand extends SubCommand {
       return;
     }
 
-    const action = rawAction.toLowerCase();
+    const action = resolvedAction.action;
 
-    if (!key || !action) {
+    const role = await findManagedRole(context.guildId, key);
+    if (!role) {
       const embed = new Embed({
-        title: "Datos incompletos",
-        description: "La clave y la accion deben contener al menos un caracter.",
+        title: "Rol no encontrado",
+        description:
+          "No existe una configuracion registrada con esa clave. Verifica el nombre e intentalo nuevamente.",
         color: EmbedColors.Red,
       });
 
@@ -50,33 +80,35 @@ export default class RoleClearLimitCommand extends SubCommand {
       return;
     }
 
-    const existing = await getRoleLimit(
-      ctx.guildId,
-      key,
-      action,
-      ctx.db.instance,
-    );
+    const existing = role.limits[action.key];
 
-    const record = await clearRoleLimit(
-      ctx.guildId,
-      key,
-      action,
-      ctx.db.instance,
-    );
+    await clearRoleLimit(context.guildId, role.key, action.key);
+    const updated = await findManagedRole(context.guildId, key);
+    const remaining = updated
+      ? Object.keys(updated.limits ?? {}).length
+      : 0;
 
     const embed = new Embed({
-      title: existing === undefined
-        ? "Accion no configurada"
-        : "Limite eliminado",
-      description: existing === undefined
-        ? "No habia un limite registrado para esa accion."
-        : `La accion **${action}** del rol **${key}** vuelve al comportamiento por defecto.`,
+      title:
+        existing === undefined ? "Accion no configurada" : "Limite eliminado",
+      description:
+        existing === undefined
+          ? "No habia un limite registrado para esa accion."
+          : `La accion **${action.definition.label}** del rol **${key}** vuelve al comportamiento por defecto.`,
       color: existing === undefined ? EmbedColors.Orange : EmbedColors.Yellow,
       fields: [
         {
           name: "Limites restantes",
-          value: Object.keys(record.limits ?? {}).length.toString(),
+          value: remaining.toString(),
         },
+        ...(existing
+          ? [
+              {
+                name: "Limite anterior",
+                value: formatLimitRecord(existing),
+              },
+            ]
+          : []),
       ],
     });
 

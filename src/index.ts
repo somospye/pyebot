@@ -6,30 +6,28 @@ import "dotenv/config";
 import type { ParseClient, ParseMiddlewares } from "seyfert";
 import { Client, extendContext } from "seyfert";
 import { db } from "@/db";
-import { CooldownManager } from "@/modules/cooldown";
-import * as repositories from "@/repositories";
+import type { CooldownManager } from "@/modules/cooldown";
 import * as schemas from "@/schemas";
 import { GuildLogger } from "@/utils/guildLogger";
 import { middlewares } from "./middlewares";
 
-const context = extendContext((interaction) => {
-  return {
-    db: {
-      instance: db,
-      repositories,
-      schemas,
-    },
-    getGuildLogger: async (): Promise<GuildLogger> => {
-      return await new GuildLogger().init(interaction.client);
-    },
-  };
-});
+import "./events"; // ! Cargar eventos base (messageCreate, reactions, etc.)
+import "./events/listeners"; // ! Cargar listeners de eventos
+
+const context = extendContext((interaction) => ({
+  db: {
+    instance: db,
+    schemas,
+  },
+  getGuildLogger: async (): Promise<GuildLogger> => {
+    return await new GuildLogger().init(interaction.client);
+  },
+}));
 
 const client = new Client({
   context,
   globalMiddlewares: ["moderationLimit"],
 });
-
 
 client.setServices({
   middlewares,
@@ -44,6 +42,11 @@ declare module "seyfert" {
     cooldown: CooldownManager;
   }
   interface ExtendContext extends ReturnType<typeof context> {}
-  interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> {}
+  interface RegisteredMiddlewares
+    extends ParseMiddlewares<typeof middlewares> {}
 }
+
+
+
+
 

@@ -1,23 +1,22 @@
 import type { GuildCommandContext } from "seyfert";
 import {
+  createBooleanOption,
+  createStringOption,
   Declare,
   Embed,
   Options,
   SubCommand,
-  createBooleanOption,
-  createStringOption,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-
 import {
   DEFAULT_MODERATION_ACTIONS,
-  getGuildRoles,
-  getRoleOverride,
-  listRoleOverrides,
-  resetRoleOverrides,
-  setRoleOverride,
   type RoleCommandOverride,
 } from "@/modules/guild-roles";
+import {
+  requireGuildContext,
+  resolveActionInput,
+  type ResolvedAction,
+} from "./shared";
 
 const OVERRIDE_CHOICES: ReadonlyArray<{
   name: string;
@@ -37,7 +36,7 @@ const options = {
     required: true,
   }),
   action: createStringOption({
-    description: "Accion de moderacion (ej. kick, ban, warn add)",
+    description: "Accion de moderacion (kick, ban, warn, timeout, purge)",
     required: false,
   }),
   override: createStringOption({
@@ -175,14 +174,8 @@ function buildUpdateEmbed(
 @Options(options)
 export default class RoleControlCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const guildId = ctx.guildId;
-    if (!guildId) {
-      await ctx.write({
-        content:
-          "[!] Este comando solo puede ejecutarse dentro de un servidor.",
-      });
-      return;
-    }
+    const context = await requireGuildContext(ctx);
+    if (!context) return;
 
     const key = ctx.options.key.trim();
     if (!key) {
@@ -192,9 +185,12 @@ export default class RoleControlCommand extends SubCommand {
       return;
     }
 
-    const guildRoles = await getGuildRoles(guildId, ctx.db.instance);
-    const roleRecord = guildRoles[key];
-    if (!roleRecord) {
+    const store = context.store;
+    const resolvedGuildId = context.storeGuildId;
+    const loadSnapshot = async () =>
+      await store.getGuildRole(resolvedGuildId, key);
+    const snapshot = await loadSnapshot();
+    if (!snapshot) {
       await ctx.write({
         content: "[!] No existe una configuracion con esa clave.",
       });
@@ -202,17 +198,34 @@ export default class RoleControlCommand extends SubCommand {
     }
 
     const reset = ctx.options.reset ?? false;
-    const actionInput = ctx.options.action?.trim();
     const overrideInput = normalizeOverride(ctx.options.override ?? undefined);
+    const actionInput = ctx.options.action?.trim();
+    let resolvedAction: ResolvedAction | null = null;
+
+    if (actionInput) {
+      const actionOutcome = resolveActionInput(actionInput);
+      if ("error" in actionOutcome) {
+        const embed = new Embed({
+          title: "Accion invalida",
+          description: actionOutcome.error,
+          color: EmbedColors.Red,
+        });
+
+        await ctx.write({ embeds: [embed] });
+        return;
+      }
+
+      resolvedAction = actionOutcome.action;
+    }
 
     try {
       if (reset) {
-        const updated = await resetRoleOverrides(guildId, key, ctx.db.instance);
+        const updated = await store.resetGuildRoleOverrides(resolvedGuildId, key);
         const embed = createSummaryEmbed(
           "Overrides reiniciados",
           EmbedColors.Green,
           updated.discordRoleId ?? null,
-          updated.reach,
+          updated.overrides ?? {},
         );
 
         await ctx.write({ embeds: [embed] });
@@ -220,7 +233,9 @@ export default class RoleControlCommand extends SubCommand {
       }
 
       if (actionInput) {
-        const action = actionInput.toLowerCase();
+        if (!resolvedAction) {
+          return;
+        }
 
         if (ctx.options.override !== undefined && overrideInput === undefined) {
           await ctx.write({
@@ -230,46 +245,41 @@ export default class RoleControlCommand extends SubCommand {
         }
 
         if (overrideInput) {
-          const updated = await setRoleOverride(
-            guildId,
+          await store.setGuildRoleOverride(
+            resolvedGuildId,
             key,
-            action,
+            resolvedAction.key,
             overrideInput,
-            ctx.db.instance,
           );
 
+          const updated = await loadSnapshot();
           const embed = buildUpdateEmbed(
             key,
-            action,
+            resolvedAction.definition.label ?? resolvedAction.key,
             overrideInput,
-            updated.discordRoleId ?? null,
-            updated.reach,
+            updated?.discordRoleId ?? null,
+            updated?.overrides ?? {},
           );
 
           await ctx.write({ embeds: [embed] });
           return;
         }
 
-        const current = await getRoleOverride(
-          guildId,
+        const overrides = await store.getGuildRoleOverrides(
+          resolvedGuildId,
           key,
-          action,
-          ctx.db.instance,
         );
-        const overrides = await listRoleOverrides(
-          guildId,
-          key,
-          ctx.db.instance,
-        );
+        const current = overrides[resolvedAction.key] ?? "inherit";
+        const overridesRecord = { ...overrides };
 
         const embed = new Embed({
-          title: `Override actual - ${action}`,
-          description: `El override para **${action}** es **${current}**.`,
+          title: `Override actual - ${resolvedAction.definition.label}`,
+          description: `El override para **${resolvedAction.key}** es **${current}**.`,
           color: EmbedColors.Blurple,
           fields: [
             {
               name: "Resumen",
-              value: formatOverrideList(overrides),
+              value: formatOverrideList(overridesRecord),
             },
           ],
           footer: { text: OPTIONS_FOOTER },
@@ -279,8 +289,19 @@ export default class RoleControlCommand extends SubCommand {
         return;
       }
 
-      const overrides = await listRoleOverrides(guildId, key, ctx.db.instance);
-      const embed = buildSummaryEmbed(key, roleRecord.discordRoleId ?? null, overrides);
+      const overrides = await store.getGuildRoleOverrides(
+        resolvedGuildId,
+        key,
+      );
+      const overridesRecord = { ...overrides } as Record<
+        string,
+        RoleCommandOverride
+      >;
+      const embed = buildSummaryEmbed(
+        key,
+        snapshot.discordRoleId ?? null,
+        overridesRecord,
+      );
 
       await ctx.write({ embeds: [embed] });
     } catch (error) {
@@ -295,3 +316,4 @@ export default class RoleControlCommand extends SubCommand {
     }
   }
 }
+

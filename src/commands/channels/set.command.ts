@@ -48,12 +48,7 @@ export default class ChannelSetCommand extends SubCommand {
     const name = ctx.options.name as CoreChannelName;
     const channelId = String(ctx.options.channel.id);
 
-    const record = await setCoreChannel(
-      guildId,
-      name,
-      channelId,
-      ctx.db.instance,
-    );
+    const record = await setCoreChannel(guildId, name, channelId);
 
     const embed = new Embed({
       title: "Canal actualizado",

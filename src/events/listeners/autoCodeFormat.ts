@@ -31,7 +31,7 @@ onMessageCreate(async (message) => {
             // send formatted code block
             await message.write({ content: fenced });
 
-            reaction_listener.off(); // desuscribirse para no responder más veces
+            reaction_listener(); // desuscribirse para no responder más veces
         }
     });
 

@@ -1,8 +1,14 @@
 import type { GuildCommandContext } from "seyfert";
-import { Declare, Embed, Options, SubCommand, createStringOption } from "seyfert";
+import {
+  createStringOption,
+  Declare,
+  Embed,
+  Options,
+  SubCommand,
+} from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { removeRole } from "@/modules/guild-roles";
+import { requireGuildContext } from "./shared";
 
 const options = {
   key: createStringOption({
@@ -19,12 +25,16 @@ const options = {
 @Options(options)
 export default class RoleRemoveCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
+    const context = await requireGuildContext(ctx);
+    if (!context) return;
+
     const key = ctx.options.key.trim();
 
     if (!key) {
       const embed = new Embed({
         title: "Clave invalida",
-        description: "Proporciona una clave conocida para eliminar la configuracion.",
+        description:
+          "Proporciona una clave conocida para eliminar la configuracion.",
         color: EmbedColors.Red,
       });
 
@@ -32,7 +42,10 @@ export default class RoleRemoveCommand extends SubCommand {
       return;
     }
 
-    const removed = await removeRole(ctx.guildId, key, ctx.db.instance);
+    const removed = await context.store.removeGuildRole(
+      context.storeGuildId,
+      key,
+    );
 
     const embed = new Embed({
       title: removed ? "Rol eliminado" : "Rol no encontrado",
@@ -45,3 +58,4 @@ export default class RoleRemoveCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+

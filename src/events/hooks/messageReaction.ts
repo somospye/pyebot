@@ -1,8 +1,7 @@
 import type { ResolveEventParams } from "seyfert";
-import {
-  createEventHook,
-  type HookSubscription,
-} from "@/events/hooks/createEventHook";
+import { createEventHook } from "@/events/hooks/createEventHook";
+
+type HookSubscription = () => void;
 
 type AsyncListener<TArgs extends readonly unknown[]> = (
   ...args: TArgs
@@ -11,7 +10,7 @@ type AsyncListener<TArgs extends readonly unknown[]> = (
 /** Parametros tipados que Seyfert provee al evento `messageReactionAdd`. */
 export type ReactionArgs = ResolveEventParams<"messageReactionAdd">;
 export type ReactionAddListener = AsyncListener<ReactionArgs>;
-export type ReactionAddSubscription = HookSubscription<ReactionArgs>;
+export type ReactionAddSubscription = HookSubscription;
 
 const reactionAddHook = createEventHook<ReactionArgs>();
 
@@ -51,7 +50,7 @@ export type ReactionRemoveListenerArgs =
   ResolveEventParams<"messageReactionRemove">;
 export type ReactionRemoveListener = AsyncListener<ReactionRemoveListenerArgs>;
 export type ReactionRemoveSubscription =
-  HookSubscription<ReactionRemoveListenerArgs>;
+  HookSubscription;
 
 const reactionRemoveHook = createEventHook<ReactionRemoveListenerArgs>();
 
@@ -90,7 +89,7 @@ export type ReactionRemoveAllListenerArgs =
 export type ReactionRemoveAllListener =
   AsyncListener<ReactionRemoveAllListenerArgs>;
 export type ReactionRemoveAllSubscription =
-  HookSubscription<ReactionRemoveAllListenerArgs>;
+  HookSubscription;
 
 const reactionRemoveAllHook =
   createEventHook<ReactionRemoveAllListenerArgs>();
@@ -131,7 +130,7 @@ export type ReactionRemoveEmojiListenerArgs =
 export type ReactionRemoveEmojiListener =
   AsyncListener<ReactionRemoveEmojiListenerArgs>;
 export type ReactionRemoveEmojiSubscription =
-  HookSubscription<ReactionRemoveEmojiListenerArgs>;
+  HookSubscription;
 
 const reactionRemoveEmojiHook =
   createEventHook<ReactionRemoveEmojiListenerArgs>();
@@ -164,3 +163,6 @@ export const emitMessageReactionRemoveEmoji = reactionRemoveEmojiHook.emit;
 /** Elimina todos los listeners actualmente registrados para `messageReactionRemoveEmoji`. */
 export const clearMessageReactionRemoveEmojiListeners =
   reactionRemoveEmojiHook.clear;
+
+
+

@@ -19,7 +19,7 @@ export default class ChannelListCommand extends SubCommand {
       throw new Error("Guild ID is required to listar los canales configurados");
     }
 
-    const snapshot = await getGuildChannels(guildId, ctx.db.instance);
+    const snapshot = await getGuildChannels(guildId);
 
     const coreLines = CORE_CHANNEL_DEFINITIONS.map((definition) => {
       const entry = snapshot.core[definition.name];

@@ -37,12 +37,7 @@ export default class ChannelAddCommand extends SubCommand {
     const label = ctx.options.label;
     const channelId = String(ctx.options.channel.id);
 
-    const record = await addManagedChannel(
-      guildId,
-      label,
-      channelId,
-      ctx.db.instance,
-    );
+    const record = await addManagedChannel(guildId, label, channelId);
 
     const embed = new Embed({
       title: "Canal opcional registrado",

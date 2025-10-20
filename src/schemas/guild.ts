@@ -8,13 +8,11 @@ export type RoleCapabilityKey = string;
 export type RoleCommandOverride = "inherit" | "allow" | "deny";
 export type RoleCommandOverrideMap = Record<RoleCapabilityKey, RoleCommandOverride>;
 
-export const LIMIT_WINDOWS = ["10m", "1h", "6h", "24h", "7d"] as const;
-export type LimitWindow = (typeof LIMIT_WINDOWS)[number];
+export type LimitWindow = `${number}${"m" | "h" | "d"}`;
 
 export interface RoleLimitRecord {
   limit: number;
   window: LimitWindow | null;
-  /** Optional precise window (in seconds) for backwards compatibility or future extensions. */
   windowSeconds?: number | null;
 }
 
@@ -55,6 +53,7 @@ export interface ManagedChannelRecord {
 export interface GuildChannelsRecord {
   core: Record<CoreChannelName, CoreChannelRecord>;
   managed: Record<string, ManagedChannelRecord>;
+  ticketMessageId?: string | null;
 }
 
 /** Default payload used when bootstrapping the roles column. */
@@ -64,6 +63,7 @@ const EMPTY_ROLES: GuildRolesRecord = {};
 const EMPTY_CHANNELS: GuildChannelsRecord = {
   core: {} as Record<CoreChannelName, CoreChannelRecord>,
   managed: {},
+  ticketMessageId: null,
 };
 
 export const guilds = pgTable("guilds", {

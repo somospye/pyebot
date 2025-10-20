@@ -8,6 +8,7 @@ import {
   SubCommand,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
+import { get_data_api, toUserId } from "@/modules/flat_api";
 import { isValidWarnId } from "@/utils/warnId";
 
 const options = {
@@ -29,45 +30,47 @@ const options = {
 export default class RemoveWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user, warn_id } = ctx.options;
-    const userRepository = ctx.db.repositories.user;
-
     const warnId = warn_id.toLowerCase();
 
     if (!isValidWarnId(warnId)) {
-      return ctx.write({
+      await ctx.write({
         content:
-          "✗ El ID del warn no es válido. Debe tener 5 caracteres alfanuméricos sin confusiones (ej. pyebt).",
+          "El ID del warn no es valido. Debe tener 5 caracteres alfanumericos sin confusiones (ej. pyebt).",
       });
+      return;
     }
 
-    const hasUser = await userRepository.has(user.id);
-    if (!hasUser) {
-      await userRepository.create(user.id);
+    const userId = toUserId(user.id);
+    const store = get_data_api();
+    const warns = await store.listUserWarns(userId);
 
-      return ctx.write({
-        content: "✗ El usuario no tiene warns para remover.",
+    if (warns.length === 0) {
+      await ctx.write({ content: "El usuario no tiene warns para remover." });
+      return;
+    }
+
+    const exists = warns.some((warn) => warn.warn_id === warnId);
+    if (!exists) {
+      await ctx.write({
+        content: `No se encontro un warn con el ID ${warnId.toUpperCase()}.`,
       });
+      return;
     }
 
     try {
-      await userRepository.removeWarn(user.id, warnId);
+      await store.removeUserWarn(userId, warnId);
     } catch (error) {
-      let errorMessage = "Error desconocido";
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      return ctx.write({
-        content: `✗ **Error al remover el warn:** ${errorMessage}`,
+      const message =
+        error instanceof Error ? error.message : "Error desconocido";
+      await ctx.write({
+        content: `Error al remover el warn: ${message}`,
       });
+      return;
     }
 
     const successEmbed = new Embed({
       title: "Usuario unwarneado",
-      description: `
-            ✓ Se removió el warn **${warnId.toUpperCase()}** del usuario **${user.username}**.
-            `,
+      description: `Se removio el warn **${warnId.toUpperCase()}** del usuario **${user.username}**.`,
       color: EmbedColors.Green,
       footer: {
         text: `Unwarneado por ${ctx.author.username}`,
@@ -78,3 +81,4 @@ export default class RemoveWarnCommand extends SubCommand {
     await ctx.write({ embeds: [successEmbed] });
   }
 }
+

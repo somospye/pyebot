@@ -35,11 +35,7 @@ export default class ChannelRemoveCommand extends SubCommand {
       return;
     }
 
-    const removed = await removeManagedChannel(
-      guildId,
-      identifier,
-      ctx.db.instance,
-    );
+    const removed = await removeManagedChannel(guildId, identifier);
 
     if (!removed) {
       await ctx.write({ content: "[!] No se encontro un canal con ese identificador." });

@@ -4,11 +4,14 @@ export type CoreChannelName =
   | "messageLogs"
   | "voiceLogs"
   | "ticketLogs"
+  | "tickets"
+  | "ticketCategory"
   | "pointsLog"
   | "generalLogs"
   | "banSanctions"
   | "staff"
   | "suggestions";
+
 
 export interface CoreChannelDefinition {
   name: CoreChannelName;
@@ -35,6 +38,11 @@ export const CORE_CHANNEL_DEFINITIONS: readonly CoreChannelDefinition[] = [
     name: "ticketLogs",
     label: "Seguimiento de tickets",
     defaultChannelId: CHANNELS_ID.ticketLogs,
+  },
+  {
+    name: "tickets",
+    label: "Canal de tickets",
+    defaultChannelId: CHANNELS_ID.tickets,
   },
   {
     name: "pointsLog",

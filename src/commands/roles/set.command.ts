@@ -1,15 +1,17 @@
 import type { GuildCommandContext } from "seyfert";
 import {
+  createRoleOption,
+  createStringOption,
   Declare,
   Embed,
   Options,
   SubCommand,
-  createRoleOption,
-  createStringOption,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { upsertRole } from "@/modules/guild-roles";
+import { toRoleId } from "@/modules/flat_api";
+
+import { requireGuildContext } from "./shared";
 
 const options = {
   key: createStringOption({
@@ -30,6 +32,9 @@ const options = {
 @Options(options)
 export default class RoleSetCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
+    const context = await requireGuildContext(ctx);
+    if (!context) return;
+
     const key = ctx.options.key.trim();
     const roleId = String(ctx.options.role.id);
 
@@ -44,15 +49,14 @@ export default class RoleSetCommand extends SubCommand {
       return;
     }
 
-    const { record } = await upsertRole(
-      ctx.guildId,
+    const snapshot = await context.store.upsertGuildRole(
+      context.storeGuildId,
+      key,
       {
-        key,
         label: key,
-        discordRoleId: roleId,
+        discordRoleId: toRoleId(roleId),
         updatedBy: ctx.author.id,
       },
-      ctx.db.instance,
     );
 
     const embed = new Embed({
@@ -62,11 +66,13 @@ export default class RoleSetCommand extends SubCommand {
         { name: "Clave", value: key },
         {
           name: "Rol",
-          value: record.discordRoleId ? `<@&${record.discordRoleId}>` : "Sin asignar",
+          value: snapshot.discordRoleId
+            ? `<@&${snapshot.discordRoleId}>`
+            : "Sin asignar",
         },
         {
           name: "Limites configurados",
-          value: Object.keys(record.limits ?? {}).length.toString(),
+          value: Object.keys(snapshot.limits ?? {}).length.toString(),
         },
       ],
     });
@@ -74,3 +80,5 @@ export default class RoleSetCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
+
+
