@@ -1,4 +1,4 @@
-export { createFlatApi, getDbApi as get_data_api } from "./core";
+export { createFlatApi, getDB } from "./core";
 export {
   buildGuildInsert,
   buildUserInsert,
@@ -37,10 +37,6 @@ export {
   type RoleId,
   type RoleKey,
   type RoleLimitMap,
-  toChannelId,
-  toGuildId,
-  toRoleId,
-  toUserId,
   type UserId,
   type UserInit,
   type UserRow,

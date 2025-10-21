@@ -1,7 +1,8 @@
 import type { GuildCommandContext } from "seyfert";
 import { createUserOption, Declare, Embed, Options, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { get_data_api, toUserId } from "@/modules/flat_api";
+import { type UserId } from "@/modules/flat_api";
+import { clearWarns, listWarns } from "@/modules/moderation/warns";
 
 const options = {
   user: createUserOption({
@@ -18,10 +19,9 @@ const options = {
 export default class ClearWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user } = ctx.options;
-    const userId = toUserId(user.id);
+    const userId = user.id as UserId;
 
-    const store = get_data_api();
-    const warns = await store.listUserWarns(userId);
+    const warns = await listWarns(userId);
     if (warns.length === 0) {
       await ctx.write({
         content: "No hay warns registrados para este usuario.",
@@ -29,7 +29,7 @@ export default class ClearWarnCommand extends SubCommand {
       return;
     }
 
-    await store.clearUserWarns(userId);
+    await clearWarns(userId);
 
     const embed = new Embed({
       title: "Warns eliminados",
@@ -44,4 +44,3 @@ export default class ClearWarnCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
-

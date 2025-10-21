@@ -21,11 +21,6 @@ export type ChannelId = Brand<string, "ChannelId">;
 export type RoleId = Brand<string, "RoleId">;
 export type UserId = Brand<string, "UserId">;
 
-export const toGuildId = (value: string): GuildId => value as GuildId;
-export const toChannelId = (value: string): ChannelId => value as ChannelId;
-export const toRoleId = (value: string): RoleId => value as RoleId;
-export const toUserId = (value: string): UserId => value as UserId;
-
 type GuildTable = typeof import("@/schemas/guild").guilds;
 type UserTable = typeof import("@/schemas/user").users;
 

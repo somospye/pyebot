@@ -8,7 +8,8 @@ import {
   SubCommand,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { get_data_api, toUserId } from "@/modules/flat_api";
+import { type UserId } from "@/modules/flat_api";
+import { listWarns, removeWarn } from "@/modules/moderation/warns";
 import { isValidWarnId } from "@/utils/warnId";
 
 const options = {
@@ -40,9 +41,8 @@ export default class RemoveWarnCommand extends SubCommand {
       return;
     }
 
-    const userId = toUserId(user.id);
-    const store = get_data_api();
-    const warns = await store.listUserWarns(userId);
+    const userId = user.id as UserId;
+    const warns = await listWarns(userId);
 
     if (warns.length === 0) {
       await ctx.write({ content: "El usuario no tiene warns para remover." });
@@ -58,7 +58,7 @@ export default class RemoveWarnCommand extends SubCommand {
     }
 
     try {
-      await store.removeUserWarn(userId, warnId);
+      await removeWarn(userId, warnId);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Error desconocido";
@@ -81,4 +81,3 @@ export default class RemoveWarnCommand extends SubCommand {
     await ctx.write({ embeds: [successEmbed] });
   }
 }
-

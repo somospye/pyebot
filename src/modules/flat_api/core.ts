@@ -59,7 +59,6 @@ export function createFlatApi(
 
 const defaultFlatApi = createFlatApi();
 
-export function getDbApi(): FlatDataStore {
+export function getDB(): FlatDataStore {
   return defaultFlatApi;
 }
-

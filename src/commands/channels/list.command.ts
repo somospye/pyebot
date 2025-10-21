@@ -1,7 +1,11 @@
 import type { GuildCommandContext } from "seyfert";
 import { Declare, Embed, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { CORE_CHANNEL_DEFINITIONS, getGuildChannels } from "@/modules/guild-channels";
+import {
+  CORE_CHANNEL_DEFINITIONS,
+  getGuildChannels,
+} from "@/modules/guild-channels";
+import { requireGuildId } from "@/utils/commandGuards";
 
 function formatChannelMention(channelId: string): string {
   return channelId ? `<#${channelId}>` : "Sin canal";
@@ -14,10 +18,8 @@ function formatChannelMention(channelId: string): string {
 })
 export default class ChannelListCommand extends SubCommand {
   async run(ctx: GuildCommandContext) {
-    const guildId = ctx.guildId;
-    if (!guildId) {
-      throw new Error("Guild ID is required to listar los canales configurados");
-    }
+    const guildId = await requireGuildId(ctx);
+    if (!guildId) return;
 
     const snapshot = await getGuildChannels(guildId);
 

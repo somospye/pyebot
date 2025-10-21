@@ -9,7 +9,7 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { toRoleId } from "@/modules/flat_api";
+import { type RoleId } from "@/modules/flat_api";
 
 import { requireGuildContext } from "./shared";
 
@@ -54,7 +54,7 @@ export default class RoleSetCommand extends SubCommand {
       key,
       {
         label: key,
-        discordRoleId: toRoleId(roleId),
+        discordRoleId: roleId as RoleId,
         updatedBy: ctx.author.id,
       },
     );

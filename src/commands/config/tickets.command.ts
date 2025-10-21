@@ -6,7 +6,8 @@ import {
   SubCommand,
 } from "seyfert";
 import { ChannelType } from "seyfert/lib/types";
-import { get_data_api, toChannelId, toGuildId } from "@/modules/flat_api";
+import { getDB, type ChannelId, type GuildId } from "@/modules/flat_api";
+import { requireGuildId } from "@/utils/commandGuards";
 
 const options = {
   // Canal de tickets
@@ -41,25 +42,24 @@ export default class ConfigTicketsCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { channel, category, logChannel } = ctx.options;
 
-    if (!ctx.guildId) {
-      await ctx.write({
-        content: "Este comando solo puede ejecutarse dentro de un servidor.",
-      });
-      return;
-    }
+    const guildId = await requireGuildId(ctx);
+    if (!guildId) return;
 
-    const guildId = toGuildId(ctx.guildId);
-    const store = get_data_api();
+    const store = getDB();
     await store.ensureGuild(guildId);
 
-    await store.setGuildCoreChannel(guildId, "tickets", toChannelId(channel.id));
+    await store.setGuildCoreChannel(
+      guildId,
+      "tickets",
+      channel.id as ChannelId,
+    );
     await store.setGuildCoreChannel(
       guildId,
       "ticketLogs",
-      toChannelId(logChannel.id)
+      logChannel.id as ChannelId,
     );
 
-    await store.setGuildTicketCategory(guildId, toChannelId(category.id));
+    await store.setGuildTicketCategory(guildId, category.id as ChannelId);
 
     await ctx.write({
       content: "Configuración de tickets guardada correctamente.",

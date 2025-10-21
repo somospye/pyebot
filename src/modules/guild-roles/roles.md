@@ -19,7 +19,7 @@ permisos) y el rate limiter en memoria.
 
 Todas las operaciones de lectura/escritura sobre la columna `roles` de la tabla `guilds`
 (listar configuraciones, actualizar overrides o limites, etc.) deben hacerse a traves de
-`get_data_api()`. Los comandos bajo `src/commands/roles` ya consumen esa API de
+`getDB()`. Los comandos bajo `src/commands/roles` ya consumen esa API de
 forma directa.
 
 ## Formato persistido

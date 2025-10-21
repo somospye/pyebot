@@ -1,7 +1,8 @@
 import type { Guild, GuildCommandContext } from "seyfert";
 import { createUserOption, Declare, Embed, Options, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { get_data_api, toUserId } from "@/modules/flat_api";
+import { type UserId } from "@/modules/flat_api";
+import { listWarns } from "@/modules/moderation/warns";
 import type { Warn } from "@/schemas/user";
 import { getMemberName } from "@/utils/guild";
 
@@ -20,11 +21,10 @@ const options = {
 export default class ListWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user } = ctx.options;
-    const userId = toUserId(user.id);
+    const userId = user.id as UserId;
 
     const guild = await ctx.guild();
-    const store = get_data_api();
-    const warns = await store.listUserWarns(userId);
+    const warns = await listWarns(userId);
 
     if (warns.length === 0) {
       await ctx.write({ content: "El usuario no tiene warns para ver." });
@@ -64,4 +64,3 @@ export default class ListWarnCommand extends SubCommand {
     return warnEntries.join("\n\n");
   }
 }
-

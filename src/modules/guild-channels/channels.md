@@ -8,7 +8,7 @@ estables:
 - `label`: texto corto que explica el uso del canal en Discord.
 - `defaultChannelId`: canal de respaldo tomado de `CHANNELS_ID` mientras no se configure otro.
 
-La configuracion persistente se almacena en la columna `channels` de la tabla `guilds`. Las lecturas y escrituras se realizan obteniendo el data API mediante `get_data_api()` y llamando a las utilidades definidas en `src/modules/flat_api/guild.ts` para mantener el JSON normalizado.
+La configuracion persistente se almacena en la columna `channels` de la tabla `guilds`. Las lecturas y escrituras se realizan obteniendo el data API mediante `getDB()` y llamando a las utilidades definidas en `src/modules/flat_api/guild.ts` para mantener el JSON normalizado.
 
 ### Flujo de inicializacion
 

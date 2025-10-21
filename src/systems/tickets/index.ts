@@ -9,7 +9,7 @@ import {
 } from "seyfert";
 import { MessageFlags, TextInputStyle } from "seyfert/lib/types";
 
-import { get_data_api, toGuildId } from "@/modules/flat_api";
+import { getDB, type GuildId } from "@/modules/flat_api";
 
 export const TICKET_SELECT_CUSTOM_ID = "tickets:category";
 export const TICKET_MODAL_PREFIX = "tickets:modal";
@@ -63,11 +63,11 @@ export const TICKET_CATEGORIES: readonly TicketCategory[] = [
  * @param client The Discord client instance.
  */
 export async function ensureTicketMessage(client: UsingClient): Promise<void> {
-  const data = get_data_api();
+  const data = getDB();
   const guilds = await client.guilds.list();
 
   for (const guildId of guilds.map((g) => g.id)) {
-    const resolvedGuildId = toGuildId(guildId);
+    const resolvedGuildId = guildId as GuildId;
     const channels = await data.getGuildChannels(resolvedGuildId);
     const ticketChannel = channels.core.tickets;
 

@@ -25,6 +25,6 @@
     },
     "stripInternal": true
   },
-  "exclude": ["node_modules", "__local.dev", "**/*.dev.*", "**/*.dev/**"],
-  "include": ["src/**/*", "scripts/data-playground.ts", "__local.dev/ui_tests"]
+  "exclude": ["node_modules", "**/*.dev.*", "**/*.dev/**"],
+  "include": ["src/**/*"]
 }

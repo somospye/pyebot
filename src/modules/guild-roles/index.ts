@@ -1,4 +1,8 @@
-import { get_data_api, toGuildId } from "@/modules/flat_api";
+import {
+  getDB,
+  type FlatDataStore,
+  type GuildId,
+} from "@/modules/flat_api";
 import type { ManagedRoleSnapshot } from "@/modules/flat_api";
 import {
   type RoleCommandOverride,
@@ -9,11 +13,28 @@ import { roleRateLimiter } from "./rateLimiter";
 
 export type { RoleCommandOverride } from "@/schemas/guild";
 
-export async function listRoles(guildId: string, _db?: unknown): Promise<ManagedRoleSnapshot[]> {
-  const store = get_data_api();
-  const resolved = toGuildId(guildId);
-  await store.ensureGuild(resolved);
-  return await store.listGuildRoles(resolved);
+type GuildRoleTask<T> = (
+  store: FlatDataStore,
+  resolvedGuildId: GuildId,
+) => Promise<T>;
+
+async function withGuildRolesStore<T>(
+  guildId: string,
+  task: GuildRoleTask<T>,
+): Promise<T> {
+  const store = getDB();
+  const resolvedGuildId = guildId as GuildId;
+  await store.ensureGuild(resolvedGuildId);
+  return await task(store, resolvedGuildId);
+}
+
+export async function listRoles(
+  guildId: string,
+  _db?: unknown,
+): Promise<ManagedRoleSnapshot[]> {
+  return await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
+    store.listGuildRoles(resolvedGuildId),
+  );
 }
 
 export async function setRoleOverride(
@@ -23,10 +44,9 @@ export async function setRoleOverride(
   override: RoleCommandOverride,
   _db?: unknown,
 ): Promise<void> {
-  const store = get_data_api();
-  const resolved = toGuildId(guildId);
-  await store.ensureGuild(resolved);
-  await store.setGuildRoleOverride(resolved, roleKey, actionKey, override);
+  await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
+    store.setGuildRoleOverride(resolvedGuildId, roleKey, actionKey, override),
+  );
 }
 
 export async function clearRoleLimit(
@@ -35,10 +55,9 @@ export async function clearRoleLimit(
   actionKey: string,
   _db?: unknown,
 ): Promise<void> {
-  const store = get_data_api();
-  const resolved = toGuildId(guildId);
-  await store.ensureGuild(resolved);
-  await store.clearGuildRoleLimit(resolved, roleKey, actionKey);
+  await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
+    store.clearGuildRoleLimit(resolvedGuildId, roleKey, actionKey),
+  );
 }
 
 export async function saveRoleLimit(
@@ -48,11 +67,12 @@ export async function saveRoleLimit(
   limit: RoleLimitRecord,
   _db?: unknown,
 ): Promise<void> {
-  const store = get_data_api();
-  const resolved = toGuildId(guildId);
-  await store.ensureGuild(resolved);
-  await store.setGuildRoleLimit(resolved, roleKey, actionKey, limit);
-}export interface RoleLimitUsage {
+  await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
+    store.setGuildRoleLimit(resolvedGuildId, roleKey, actionKey, limit),
+  );
+}
+
+export interface RoleLimitUsage {
   roleKey: string;
   limit: RoleLimitRecord;
   windowSeconds: number;
@@ -155,10 +175,9 @@ export async function resolveRoleActionPermission({
     };
   }
 
-  const flat = get_data_api();
-  const resolvedGuildId = toGuildId(guildId);
-  await flat.ensureGuild(resolvedGuildId);
-  const roles = await flat.listGuildRoles(resolvedGuildId);
+  const roles = await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
+    store.listGuildRoles(resolvedGuildId),
+  );
   const action = normaliseAction(actionKey);
   const membership = new Set(memberRoleIds);
 
@@ -216,10 +235,9 @@ export async function consumeRoleLimits({
     return { allowed: true, applied: [] };
   }
 
-  const data = get_data_api();
-  const resolvedGuildId = toGuildId(guildId);
-  await data.ensureGuild(resolvedGuildId);
-  const roles = await data.listGuildRoles(resolvedGuildId);
+  const roles = await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
+    store.listGuildRoles(resolvedGuildId),
+  );
   const action = normaliseAction(actionKey);
   const membership = new Set(memberRoleIds);
 

@@ -1,6 +1,6 @@
 import type { GuildCommandContext } from "seyfert";
 
-import { get_data_api, toGuildId } from "@/modules/flat_api";
+import { getDB } from "@/modules/flat_api";
 import type {
   FlatDataStore,
   GuildId,
@@ -16,9 +16,7 @@ import type {
   RoleCommandOverride,
   RoleLimitRecord,
 } from "@/schemas/guild";
-
-const GUILD_ONLY_MESSAGE =
-  "[!] Este comando solo puede ejecutarse dentro de un servidor.";
+import { GUILD_ONLY_MESSAGE } from "@/utils/commandGuards";
 
 export const WINDOW_DESCRIPTIONS: Record<LimitWindow, string> = {
   "10m": "cada 10 minutos",
@@ -44,8 +42,8 @@ export async function requireGuildContext(
     return null;
   }
 
-  const store = get_data_api();
-  const storeGuildId = toGuildId(ctx.guildId);
+  const store = getDB();
+  const storeGuildId = ctx.guildId as GuildId;
   await store.ensureGuild(storeGuildId);
   return { guildId: ctx.guildId, storeGuildId, store };
 }

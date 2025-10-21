@@ -8,7 +8,8 @@ import {
   SubCommand,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { get_data_api, toUserId } from "@/modules/flat_api";
+import { type UserId } from "@/modules/flat_api";
+import { addWarn, listWarns } from "@/modules/moderation/warns";
 import type { Warn } from "@/schemas/user";
 import { generateWarnId } from "@/utils/warnId";
 
@@ -31,9 +32,8 @@ const options = {
 export default class AddWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user, reason } = ctx.options;
-    const userId = toUserId(user.id);
-    const store = get_data_api();
-    const existingWarns = await store.listUserWarns(userId);
+    const userId = user.id as UserId;
+    const existingWarns = await listWarns(userId);
     const existingIds = new Set(existingWarns.map((warn) => warn.warn_id));
 
     let warnId = generateWarnId();
@@ -50,7 +50,7 @@ export default class AddWarnCommand extends SubCommand {
       timestamp: new Date().toISOString(),
     };
 
-    await store.addUserWarn(userId, warn);
+    await addWarn(userId, warn);
 
     const successEmbed = new Embed({
       title: "Usuario warneado",
@@ -70,4 +70,3 @@ export default class AddWarnCommand extends SubCommand {
     await ctx.write({ embeds: [successEmbed] });
   }
 }
-

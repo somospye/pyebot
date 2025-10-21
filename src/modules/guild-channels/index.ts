@@ -1,4 +1,9 @@
-import { get_data_api, toChannelId, toGuildId } from "@/modules/flat_api";
+import {
+  getDB,
+  type ChannelId,
+  type FlatDataStore,
+  type GuildId,
+} from "@/modules/flat_api";
 import type {
   CoreChannelRecord,
   GuildChannelsRecord,
@@ -6,13 +11,27 @@ import type {
 } from "@/schemas/guild";
 import type { CoreChannelName } from "./constants";
 
+type GuildTask<T> = (
+  store: FlatDataStore,
+  resolvedGuildId: GuildId,
+) => Promise<T>;
+
+async function withGuildStore<T>(
+  guildId: string,
+  task: GuildTask<T>,
+): Promise<T> {
+  const store = getDB();
+  const resolvedGuildId = guildId as GuildId;
+  await store.ensureGuild(resolvedGuildId);
+  return await task(store, resolvedGuildId);
+}
+
 export async function getGuildChannels(
   guildId: string,
 ): Promise<GuildChannelsRecord> {
-  const data = get_data_api();
-  const resolvedGuildId = toGuildId(guildId);
-  await data.ensureGuild(resolvedGuildId);
-  return await data.getGuildChannels(resolvedGuildId);
+  return await withGuildStore(guildId, (store, resolvedGuildId) =>
+    store.getGuildChannels(resolvedGuildId),
+  );
 }
 
 export async function setCoreChannel(
@@ -20,13 +39,8 @@ export async function setCoreChannel(
   name: CoreChannelName,
   channelId: string,
 ): Promise<CoreChannelRecord> {
-  const data = get_data_api();
-  const resolvedGuildId = toGuildId(guildId);
-  await data.ensureGuild(resolvedGuildId);
-  return await data.setGuildCoreChannel(
-    resolvedGuildId,
-    name,
-    toChannelId(channelId),
+  return await withGuildStore(guildId, (store, resolvedGuildId) =>
+    store.setGuildCoreChannel(resolvedGuildId, name, channelId as ChannelId),
   );
 }
 
@@ -35,23 +49,21 @@ export async function addManagedChannel(
   label: string,
   channelId: string,
 ): Promise<ManagedChannelRecord> {
-  const data = get_data_api();
-  const resolvedGuildId = toGuildId(guildId);
-  await data.ensureGuild(resolvedGuildId);
-  return await data.addGuildManagedChannel(resolvedGuildId, {
-    label,
-    channelId: toChannelId(channelId),
-  });
+  return await withGuildStore(guildId, (store, resolvedGuildId) =>
+    store.addGuildManagedChannel(resolvedGuildId, {
+      label,
+      channelId: channelId as ChannelId,
+    }),
+  );
 }
 
 export async function removeManagedChannel(
   guildId: string,
   identifier: string,
 ): Promise<boolean> {
-  const data = get_data_api();
-  const resolvedGuildId = toGuildId(guildId);
-  await data.ensureGuild(resolvedGuildId);
-  return await data.removeGuildManagedChannel(resolvedGuildId, identifier);
+  return await withGuildStore(guildId, (store, resolvedGuildId) =>
+    store.removeGuildManagedChannel(resolvedGuildId, identifier),
+  );
 }
 
 export {
