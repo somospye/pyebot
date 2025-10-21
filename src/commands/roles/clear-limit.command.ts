@@ -8,7 +8,6 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { clearRoleLimit } from "@/modules/guild-roles";
 
 import {
   findManagedRole,
@@ -16,6 +15,7 @@ import {
   requireGuildContext,
   resolveActionInput,
 } from "./shared";
+import { clearRoleLimit } from "@/modules/repo";
 
 const options = {
   key: createStringOption({
@@ -46,13 +46,11 @@ export default class RoleClearLimitCommand extends SubCommand {
         description: "Indica la clave del rol administrado que deseas editar.",
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
 
     const rawAction = ctx.options.action.trim();
-
     const resolvedAction = resolveActionInput(rawAction);
     if ("error" in resolvedAction) {
       const embed = new Embed({
@@ -60,11 +58,9 @@ export default class RoleClearLimitCommand extends SubCommand {
         description: resolvedAction.error,
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
-
     const action = resolvedAction.action;
 
     const role = await findManagedRole(context.guildId, key);
@@ -75,18 +71,17 @@ export default class RoleClearLimitCommand extends SubCommand {
           "No existe una configuracion registrada con esa clave. Verifica el nombre e intentalo nuevamente.",
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
 
     const existing = role.limits[action.key];
 
+
     await clearRoleLimit(context.guildId, role.key, action.key);
+
     const updated = await findManagedRole(context.guildId, key);
-    const remaining = updated
-      ? Object.keys(updated.limits ?? {}).length
-      : 0;
+    const remaining = updated ? Object.keys(updated.limits ?? {}).length : 0;
 
     const embed = new Embed({
       title:
@@ -103,11 +98,11 @@ export default class RoleClearLimitCommand extends SubCommand {
         },
         ...(existing
           ? [
-              {
-                name: "Limite anterior",
-                value: formatLimitRecord(existing),
-              },
-            ]
+            {
+              name: "Limite anterior",
+              value: formatLimitRecord(existing),
+            },
+          ]
           : []),
       ],
     });

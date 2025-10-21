@@ -220,3 +220,134 @@ function resolveManagedKey(managed: Record<string, any>, identifier: string) {
     const asEntry = Object.entries(managed).find(([, v]) => v?.label === identifier);
     return asEntry ? asEntry[0] : null;
 }
+
+
+// Minimal action-key normalization so you don't end up with 5 spellings of the same thing.
+const normAction = (k: string) => k.trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+// Ensure role record exists inside roles JSON without doing extra round-trips.
+async function ensureRole(guildId: string, roleKey: string) {
+    return writeRoles(guildId, (roles: any = {}) => {
+        const ex = roles[roleKey] ?? {};
+        roles[roleKey] = {
+            ...ex,
+            reach: ex.reach ?? {},   // overrides map
+            limits: ex.limits ?? {}, // limits map
+            updatedAt: new Date().toISOString(),
+        };
+        return roles;
+    });
+}
+
+/* ===================== OVERRIDES ===================== */
+
+export async function getRoleOverrides(guildId: string, roleKey: string) {
+    const roles = await readRoles(guildId);
+    return { ...(roles?.[roleKey]?.reach ?? {}) };
+}
+
+export async function setRoleOverride(
+    guildId: string,
+    roleKey: string,
+    actionKey: string,
+    override: any,           // e.g. "allow" | "deny" | config object — your call
+    _db?: unknown,           // optional tx placeholder, ignored here
+): Promise<void> {
+    await writeRoles(guildId, (roles: any = {}) => {
+        const k = normAction(actionKey);
+        const ex = roles[roleKey] ?? {};
+        const reach = { ...(ex.reach ?? {}) };
+        reach[k] = override;
+        roles[roleKey] = { ...ex, reach, updatedAt: new Date().toISOString() };
+        return roles;
+    });
+}
+
+export async function clearRoleOverride(
+    guildId: string,
+    roleKey: string,
+    actionKey: string,
+    _db?: unknown,
+): Promise<boolean> {
+    let removed = false;
+    await writeRoles(guildId, (roles: any = {}) => {
+        const ex = roles[roleKey];
+        if (!ex?.reach) return roles;
+        const k = normAction(actionKey);
+        if (!(k in ex.reach)) return roles;
+        const reach = { ...ex.reach };
+        delete reach[k];
+        removed = true;
+        roles[roleKey] = { ...ex, reach, updatedAt: new Date().toISOString() };
+        return roles;
+    });
+    return removed;
+}
+
+export async function resetRoleOverrides(
+    guildId: string,
+    roleKey: string,
+    _db?: unknown,
+): Promise<void> {
+    await writeRoles(guildId, (roles: any = {}) => {
+        const ex = roles[roleKey] ?? {};
+        roles[roleKey] = { ...ex, reach: {}, updatedAt: new Date().toISOString() };
+        return roles;
+    });
+}
+
+/* ====================== LIMITS ======================= */
+
+export async function getRoleLimits(guildId: string, roleKey: string) {
+    const roles = await readRoles(guildId);
+    return { ...(roles?.[roleKey]?.limits ?? {}) };
+}
+
+export async function setRoleLimit(
+    guildId: string,
+    roleKey: string,
+    actionKey: string,
+    limit: { limit: number; window?: string | null; windowSeconds?: number | null },
+    _db?: unknown,
+): Promise<void> {
+    await writeRoles(guildId, (roles: any = {}) => {
+        const k = normAction(actionKey);
+        const ex = roles[roleKey] ?? {};
+        const limits = { ...(ex.limits ?? {}) };
+        limits[k] = {
+            limit: limit.limit,
+            window: limit.window ?? null,
+            windowSeconds: limit.windowSeconds ?? null,
+        };
+        roles[roleKey] = { ...ex, limits, updatedAt: new Date().toISOString() };
+        return roles;
+    });
+}
+
+export async function clearRoleLimit(
+    guildId: string,
+    roleKey: string,
+    actionKey: string,
+    _db?: unknown,
+): Promise<boolean> {
+    let removed = false;
+    await writeRoles(guildId, (roles: any = {}) => {
+        const ex = roles[roleKey];
+        if (!ex?.limits) return roles;
+        const k = normAction(actionKey);
+        if (!(k in ex.limits)) return roles;
+        const limits = { ...ex.limits };
+        delete limits[k];
+        removed = true;
+        roles[roleKey] = { ...ex, limits, updatedAt: new Date().toISOString() };
+        return roles;
+    });
+    return removed;
+}
+
+
+// Create a role if missing without changing anything else.
+// Useful before bulk-setting multiple overrides/limits in one place.
+export async function ensureRoleExists(guildId: string, roleKey: string): Promise<void> {
+    await ensureRole(guildId, roleKey);
+}

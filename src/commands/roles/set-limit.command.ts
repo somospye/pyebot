@@ -8,11 +8,10 @@ import {
   SubCommand,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { saveRoleLimit } from "@/modules/guild-roles";
 
+import * as repo from "@/modules/repo";
 import {
   buildLimitRecord,
-  findManagedRole,
   formatLimitRecord,
   parseLimitWindowInput,
   requireGuildContext,
@@ -40,7 +39,6 @@ const options = {
   }),
 };
 
-// Define o actualiza un limite de uso para una accion concreta.
 @Declare({
   name: "set-limit",
   description: "Configurar un limite de uso para una accion",
@@ -58,7 +56,6 @@ export default class RoleSetLimitCommand extends SubCommand {
         description: "Indica la clave del rol administrado que deseas editar.",
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
@@ -70,52 +67,42 @@ export default class RoleSetLimitCommand extends SubCommand {
         description: actionResult.error,
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
+    const action = actionResult.action;
 
     const parsedWindow = parseLimitWindowInput(ctx.options.window);
     if (!parsedWindow) {
       const embed = new Embed({
         title: "Ventana invalida",
-        description:
-          "Usa un formato valido como 10m, 1h, 6h, 24h o 7d para definir la ventana.",
+        description: "Usa un formato valido como 10m, 1h, 6h, 24h o 7d.",
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
 
-    const role = await findManagedRole(context.guildId, key);
-    if (!role) {
+    // Ensure role exists
+    const roleRec = await repo.getRole(context.guildId, key);
+    if (!roleRec) {
       const embed = new Embed({
         title: "Rol no encontrado",
         description:
           "No existe una configuracion registrada con esa clave. Verifica el nombre e intentalo nuevamente.",
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
 
-    const action = actionResult.action;
     const uses = Math.max(0, Math.floor(ctx.options.uses));
     const limitRecord = buildLimitRecord(uses, parsedWindow.window);
 
-    await saveRoleLimit(
-      context.guildId,
-      role.key,
-      action.key,
-      limitRecord,
-    );
+    await repo.setRoleLimit(context.guildId, key, action.key, limitRecord);
 
-    const updated = await findManagedRole(context.guildId, key);
-    const configuredLimits = updated
-      ? Object.keys(updated.limits ?? {}).length
-      : 0;
+    const updated = await repo.getRole(context.guildId, key);
+    const configuredLimits = Object.keys((updated?.limits ?? {}) as Record<string, unknown>).length;
 
     const embed = new Embed({
       title: "Limite actualizado",
@@ -123,18 +110,11 @@ export default class RoleSetLimitCommand extends SubCommand {
       fields: [
         { name: "Rol", value: key },
         { name: "Accion", value: action.key },
-        {
-          name: "Limite",
-          value: formatLimitRecord(limitRecord),
-        },
-        {
-          name: "Limites configurados",
-          value: configuredLimits.toString(),
-        },
+        { name: "Limite", value: formatLimitRecord(limitRecord) },
+        { name: "Limites configurados", value: configuredLimits.toString() },
       ],
     });
 
     await ctx.write({ embeds: [embed] });
   }
 }
-

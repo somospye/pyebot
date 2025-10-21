@@ -1,4 +1,3 @@
-import type { GuildId } from "@/modules/repo";
 
 const DEFAULT_GUILD_ONLY_MESSAGE =
   "[!] Este comando solo puede ejecutarse dentro de un servidor.";
@@ -19,12 +18,12 @@ type GuildAwareContext = {
 export async function requireGuildId<T extends GuildAwareContext>(
   ctx: T,
   message = DEFAULT_GUILD_ONLY_MESSAGE,
-): Promise<GuildId | null> {
+): Promise<string | null> {
   if (!ctx.guildId) {
     await ctx.write({ content: message });
     return null;
   }
-  return ctx.guildId as GuildId;
+  return ctx.guildId;
 }
 
 export const GUILD_ONLY_MESSAGE = DEFAULT_GUILD_ONLY_MESSAGE;

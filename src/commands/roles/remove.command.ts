@@ -8,6 +8,7 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
+import * as repo from "@/modules/repo";
 import { requireGuildContext } from "./shared";
 
 const options = {
@@ -17,7 +18,6 @@ const options = {
   }),
 };
 
-// Elimina una configuracion de rol administrado.
 @Declare({
   name: "remove",
   description: "Eliminar un rol administrado",
@@ -29,23 +29,17 @@ export default class RoleRemoveCommand extends SubCommand {
     if (!context) return;
 
     const key = ctx.options.key.trim();
-
     if (!key) {
       const embed = new Embed({
         title: "Clave invalida",
-        description:
-          "Proporciona una clave conocida para eliminar la configuracion.",
+        description: "Proporciona una clave conocida para eliminar la configuracion.",
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
 
-    const removed = await context.store.removeGuildRole(
-      context.storeGuildId,
-      key,
-    );
+    const removed = await repo.removeRole(context.guildId, key);
 
     const embed = new Embed({
       title: removed ? "Rol eliminado" : "Rol no encontrado",
@@ -58,4 +52,3 @@ export default class RoleRemoveCommand extends SubCommand {
     await ctx.write({ embeds: [embed] });
   }
 }
-

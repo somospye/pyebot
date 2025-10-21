@@ -1,76 +1,11 @@
-import {
-  getDB,
-  type FlatDataStore,
-  type GuildId,
-} from "@/modules/repo";
-import type { ManagedRoleSnapshot } from "@/modules/repo";
+import { roleRateLimiter } from "./rateLimiter";
+import * as repo from "@/modules/repo";
 import {
   type RoleCommandOverride,
   type RoleLimitRecord,
 } from "@/schemas/guild";
 
-import { roleRateLimiter } from "./rateLimiter";
-
 export type { RoleCommandOverride } from "@/schemas/guild";
-
-type GuildRoleTask<T> = (
-  store: FlatDataStore,
-  resolvedGuildId: GuildId,
-) => Promise<T>;
-
-async function withGuildRolesStore<T>(
-  guildId: string,
-  task: GuildRoleTask<T>,
-): Promise<T> {
-  const store = getDB();
-  const resolvedGuildId = guildId as GuildId;
-  await store.ensureGuild(resolvedGuildId);
-  return await task(store, resolvedGuildId);
-}
-
-export async function listRoles(
-  guildId: string,
-  _db?: unknown,
-): Promise<ManagedRoleSnapshot[]> {
-  return await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
-    store.listGuildRoles(resolvedGuildId),
-  );
-}
-
-export async function setRoleOverride(
-  guildId: string,
-  roleKey: string,
-  actionKey: string,
-  override: RoleCommandOverride,
-  _db?: unknown,
-): Promise<void> {
-  await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
-    store.setGuildRoleOverride(resolvedGuildId, roleKey, actionKey, override),
-  );
-}
-
-export async function clearRoleLimit(
-  guildId: string,
-  roleKey: string,
-  actionKey: string,
-  _db?: unknown,
-): Promise<void> {
-  await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
-    store.clearGuildRoleLimit(resolvedGuildId, roleKey, actionKey),
-  );
-}
-
-export async function saveRoleLimit(
-  guildId: string,
-  roleKey: string,
-  actionKey: string,
-  limit: RoleLimitRecord,
-  _db?: unknown,
-): Promise<void> {
-  await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
-    store.setGuildRoleLimit(resolvedGuildId, roleKey, actionKey, limit),
-  );
-}
 
 export interface RoleLimitUsage {
   roleKey: string;
@@ -116,10 +51,10 @@ export interface ResolveRoleActionPermissionInput {
 export interface ResolveRoleActionPermissionResult {
   allowed: boolean;
   decision:
-    | "override-allow"
-    | "override-deny"
-    | "discord-allow"
-    | "discord-deny";
+  | "override-allow"
+  | "override-deny"
+  | "discord-allow"
+  | "discord-deny";
   roleKey?: string;
   override?: RoleCommandOverride;
 }
@@ -130,6 +65,66 @@ export interface ConsumeRoleLimitsOptions {
   memberRoleIds: readonly string[];
 }
 
+/* ------------------------------------------------------------------ */
+/* Helpers to read role data from repo and normalize to snapshots      */
+/* ------------------------------------------------------------------ */
+
+interface RoleSnapshot {
+  key: string;
+  discordRoleId: string | null;
+  overrides: Record<string, RoleCommandOverride>;
+  limits: Record<string, RoleLimitRecord>;
+}
+
+function normaliseAction(action: string): string {
+  const trimmed = action.trim().toLowerCase();
+  if (!trimmed) throw new Error("Action key must be provided.");
+  return trimmed;
+}
+
+function normaliseKey(k: string) {
+  return k.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+async function listGuildRoleSnapshots(guildId: string): Promise<RoleSnapshot[]> {
+  const rolesObj = await repo.readRoles(guildId); // JSON map: { [roleKey]: { discordRoleId?, reach/overrides?, limits? } }
+  const entries = Object.entries(rolesObj ?? {});
+  return entries.map(([key, rec]: [string, any]) => {
+    const overrides = (rec?.overrides ?? rec?.reach ?? {}) as Record<
+      string,
+      RoleCommandOverride
+    >;
+    const limits = (rec?.limits ?? {}) as Record<string, RoleLimitRecord>;
+    const discordRoleId =
+      rec?.discordRoleId ??
+      rec?.discord_role_id ??
+      rec?.discordId ??
+      rec?.id ??
+      null;
+
+    // normalize action keys so lookups are stable
+    const normOverrides: Record<string, RoleCommandOverride> = {};
+    for (const [ok, ov] of Object.entries(overrides)) {
+      normOverrides[normaliseKey(ok)] = ov as RoleCommandOverride;
+    }
+    const normLimits: Record<string, RoleLimitRecord> = {};
+    for (const [lk, lv] of Object.entries(limits)) {
+      normLimits[normaliseKey(lk)] = lv as RoleLimitRecord;
+    }
+
+    return {
+      key,
+      discordRoleId,
+      overrides: normOverrides,
+      limits: normLimits,
+    };
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Public APIs                                                         */
+/* ------------------------------------------------------------------ */
+
 /**
  * Retorna una descripcion legible de la ventana de un limite.
  * Ex. "10 minutes", "1 hour", "no-window", "inherit"
@@ -137,9 +132,7 @@ export interface ConsumeRoleLimitsOptions {
 export function describeWindow(limit: RoleLimitRecord | undefined): string {
   if (!limit) return "inherit";
   const windowSeconds = limit.windowSeconds;
-  if (!windowSeconds || windowSeconds <= 0) {
-    return "no-window";
-  }
+  if (!windowSeconds || windowSeconds <= 0) return "no-window";
 
   const match = limit.window?.match(/^(\d+)(m|h|d)$/);
   if (match) {
@@ -154,13 +147,12 @@ export function describeWindow(limit: RoleLimitRecord | undefined): string {
         return `${value} day${value !== 1 ? "s" : ""}`;
     }
   }
-
   return `${windowSeconds}s`;
 }
 
 /**
  * Determines whether a member can execute a moderation action given the roles
- * configured inside the data store.
+ * configured in the DB via repo.
  */
 export async function resolveRoleActionPermission({
   guildId,
@@ -175,9 +167,7 @@ export async function resolveRoleActionPermission({
     };
   }
 
-  const roles = await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
-    store.listGuildRoles(resolvedGuildId),
-  );
+  const roles = await listGuildRoleSnapshots(guildId);
   const action = normaliseAction(actionKey);
   const membership = new Set(memberRoleIds);
 
@@ -235,9 +225,7 @@ export async function consumeRoleLimits({
     return { allowed: true, applied: [] };
   }
 
-  const roles = await withGuildRolesStore(guildId, (store, resolvedGuildId) =>
-    store.listGuildRoles(resolvedGuildId),
-  );
+  const roles = await listGuildRoleSnapshots(guildId);
   const action = normaliseAction(actionKey);
   const membership = new Set(memberRoleIds);
 
@@ -253,14 +241,10 @@ export async function consumeRoleLimits({
     }
 
     const limit = snapshot.limits[action];
-    if (!limit || !Number.isFinite(limit.limit) || limit.limit <= 0) {
-      continue;
-    }
+    if (!limit || !Number.isFinite(limit.limit) || limit.limit <= 0) continue;
 
     const windowSeconds = limit.windowSeconds;
-    if (!windowSeconds || windowSeconds <= 0) {
-      continue;
-    }
+    if (!windowSeconds || windowSeconds <= 0) continue;
 
     const bucketKey = `${guildId}:${snapshot.key}:${action}`;
     const outcome = roleRateLimiter.consume(
@@ -270,9 +254,7 @@ export async function consumeRoleLimits({
     );
 
     if (!outcome.allowed) {
-      for (const entry of consumed) {
-        roleRateLimiter.rollback(entry.key);
-      }
+      for (const entry of consumed) roleRateLimiter.rollback(entry.key);
 
       return {
         allowed: false,
@@ -301,16 +283,6 @@ export async function consumeRoleLimits({
 
   return {
     allowed: true,
-    applied: consumed.map((entry) => entry.usage),
+    applied: consumed.map((e) => e.usage),
   };
 }
-
-function normaliseAction(action: string): string {
-  const trimmed = action.trim().toLowerCase();
-  if (!trimmed) {
-    throw new Error("Action key must be provided.");
-  }
-  return trimmed;
-}
-
-

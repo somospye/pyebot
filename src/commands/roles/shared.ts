@@ -1,16 +1,10 @@
 import type { GuildCommandContext } from "seyfert";
 
-import { getDB } from "@/modules/repo";
-import type {
-  FlatDataStore,
-  GuildId,
-  ManagedRoleSnapshot,
-} from "@/modules/repo";
+import * as repo from "@/modules/repo";
 import {
   DEFAULT_MODERATION_ACTIONS,
-  listRoles,
   type ModerationActionDefinition,
-} from "@/modules/guild-roles";
+} from "@/modules/guild-roles"; // only for constants/types
 import type {
   LimitWindow,
   RoleCommandOverride,
@@ -30,8 +24,6 @@ const LIMIT_WINDOW_PATTERN = /^(\d+)(m|h|d)$/;
 
 export interface ResolvedGuildContext {
   guildId: string;
-  storeGuildId: GuildId;
-  store: FlatDataStore;
 }
 
 export async function requireGuildContext(
@@ -41,17 +33,55 @@ export async function requireGuildContext(
     await ctx.write({ content: GUILD_ONLY_MESSAGE });
     return null;
   }
-
-  const store = getDB();
-  const storeGuildId = ctx.guildId as GuildId;
-  await store.ensureGuild(storeGuildId);
-  return { guildId: ctx.guildId, storeGuildId, store };
+  await repo.ensureGuild(ctx.guildId);
+  return { guildId: ctx.guildId };
 }
+
+/* ------------------------------------------------------------------ */
+/* Roles snapshots from repo.readRoles()                               */
+/* ------------------------------------------------------------------ */
+
+export interface ManagedRoleSnapshot {
+  key: string;
+  discordRoleId: string | null;
+  overrides: Record<string, RoleCommandOverride>;
+  limits: Record<string, RoleLimitRecord>;
+}
+
+const normKey = (k: string) => k.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
 export async function fetchManagedRoles(
   guildId: string,
 ): Promise<ManagedRoleSnapshot[]> {
-  return await listRoles(guildId);
+  const rolesObj = (await repo.readRoles(guildId)) as Record<string, any>;
+  const entries = Object.entries(rolesObj ?? {});
+  return entries.map(([key, rec]): ManagedRoleSnapshot => {
+    const rawOverrides =
+      (rec?.overrides as Record<string, RoleCommandOverride>) ??
+      (rec?.reach as Record<string, RoleCommandOverride>) ??
+      {};
+    const rawLimits =
+      (rec?.limits as Record<string, RoleLimitRecord>) ?? {};
+
+    const overrides: Record<string, RoleCommandOverride> = {};
+    for (const [k, v] of Object.entries(rawOverrides)) {
+      overrides[normKey(k)] = v as RoleCommandOverride;
+    }
+
+    const limits: Record<string, RoleLimitRecord> = {};
+    for (const [k, v] of Object.entries(rawLimits)) {
+      limits[normKey(k)] = v as RoleLimitRecord;
+    }
+
+    const discordRoleId =
+      rec?.discordRoleId ??
+      rec?.discord_role_id ??
+      rec?.discordId ??
+      rec?.id ??
+      null;
+
+    return { key, discordRoleId, overrides, limits };
+  });
 }
 
 export async function findManagedRole(
@@ -62,6 +92,10 @@ export async function findManagedRole(
   return roles.find((role) => role.key === key) ?? null;
 }
 
+/* ------------------------------------------------------------------ */
+/* Parsing/formatting helpers (unchanged)                              */
+/* ------------------------------------------------------------------ */
+
 export interface ResolvedAction {
   definition: ModerationActionDefinition;
   key: string;
@@ -70,14 +104,10 @@ export interface ResolvedAction {
 export function resolveActionInput(
   raw: string | undefined,
 ): { action: ResolvedAction } | { error: string } {
-  if (!raw) {
-    return { error: "Debes indicar una accion de moderacion." };
-  }
+  if (!raw) return { error: "Debes indicar una accion de moderacion." };
 
   const normalised = raw.trim().toLowerCase();
-  if (!normalised) {
-    return { error: "Debes indicar una accion de moderacion." };
-  }
+  if (!normalised) return { error: "Debes indicar una accion de moderacion." };
 
   if (normalised.includes(".")) {
     return {
@@ -96,10 +126,7 @@ export function resolveActionInput(
     const available = DEFAULT_MODERATION_ACTIONS.map(
       (entry) => `\`${entry.key}\``,
     ).join(", ");
-
-    return {
-      error: `Accion desconocida. Opciones disponibles: ${available}.`,
-    };
+    return { error: `Accion desconocida. Opciones disponibles: ${available}.` };
   }
 
   return { action: { definition: action, key: action.key } };
@@ -121,29 +148,21 @@ export function parseLimitWindowInput(
   if (!match) return null;
 
   const value = Number.parseInt(match[1], 10);
-  if (!Number.isFinite(value) || value <= 0) {
-    return null;
-  }
+  if (!Number.isFinite(value) || value <= 0) return null;
 
   const unit = match[2];
   const multiplier = unit === "m" ? 60 : unit === "h" ? 3600 : 86400;
   const seconds = value * multiplier;
 
-  return {
-    window: raw as LimitWindow,
-    seconds,
-  };
+  return { window: raw as LimitWindow, seconds };
 }
 
 export function limitWindowToSeconds(window: LimitWindow): number {
   const match = window.match(LIMIT_WINDOW_PATTERN);
-  if (!match) {
-    throw new Error(`Ventana invalida: ${window}`);
-  }
+  if (!match) throw new Error(`Ventana invalida: ${window}`);
 
   const value = Number.parseInt(match[1], 10);
   const unit = match[2];
-
   const multiplier = unit === "m" ? 60 : unit === "h" ? 3600 : 86400;
   return value * multiplier;
 }
@@ -193,6 +212,8 @@ export function buildModerationSummary(
   return DEFAULT_MODERATION_ACTIONS.map((action) => {
     const override = snapshot.overrides[action.key] ?? "inherit";
     const limit = snapshot.limits[action.key];
-    return `- **${action.label}** -> ${formatOverrideValue(override)} - ${formatLimitRecord(limit)}`;
+    return `- **${action.label}** -> ${formatOverrideValue(override)} - ${formatLimitRecord(
+      limit,
+    )}`;
   }).join("\n");
 }

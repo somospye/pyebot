@@ -1,3 +1,4 @@
+import { getGuildChannels } from "@/modules/guild-channels";
 import {
   ActionRow,
   Embed,
@@ -9,7 +10,6 @@ import {
 } from "seyfert";
 import { MessageFlags, TextInputStyle } from "seyfert/lib/types";
 
-import { getDB, type GuildId } from "@/modules/repo";
 
 export const TICKET_SELECT_CUSTOM_ID = "tickets:category";
 export const TICKET_MODAL_PREFIX = "tickets:modal";
@@ -63,12 +63,10 @@ export const TICKET_CATEGORIES: readonly TicketCategory[] = [
  * @param client The Discord client instance.
  */
 export async function ensureTicketMessage(client: UsingClient): Promise<void> {
-  const data = getDB();
   const guilds = await client.guilds.list();
 
   for (const guildId of guilds.map((g) => g.id)) {
-    const resolvedGuildId = guildId as GuildId;
-    const channels = await data.getGuildChannels(resolvedGuildId);
+    const channels = await getGuildChannels(guildId);
     const ticketChannel = channels.core.tickets;
 
     const channelId = ticketChannel?.channelId;
@@ -93,7 +91,7 @@ export async function ensureTicketMessage(client: UsingClient): Promise<void> {
     const payload = buildTicketMessagePayload();
     const msg = await client.messages.write(channelId, payload);
 
-    await data.setGuildTicketMessage(resolvedGuildId, msg.id);
+    // TODO: tipar el id del mensaje en squemas, agregar function para guardar id del mensaje en repo
 
     client.logger?.info?.("[tickets] ticket message reset", {
       channelId,

@@ -6,7 +6,8 @@ import {
   SubCommand,
 } from "seyfert";
 import { ChannelType } from "seyfert/lib/types";
-import { getDB, type ChannelId } from "@/modules/repo";
+
+import * as repo from "@/modules/repo";
 import { requireGuildId } from "@/utils/commandGuards";
 
 const options = {
@@ -17,7 +18,7 @@ const options = {
     channel_types: [ChannelType.GuildText],
   }),
 
-  // Cateroria donde se crearan los tickets
+  // Categoría donde se crearán los tickets
   category: createChannelOption({
     description: "Categoría donde se crearán los tickets",
     required: true,
@@ -45,30 +46,18 @@ export default class ConfigTicketsCommand extends SubCommand {
     const guildId = await requireGuildId(ctx);
     if (!guildId) return;
 
-    const store = getDB();
-    await store.ensureGuild(guildId);
+    // Ensure guild row exists
+    await repo.ensureGuild(guildId);
 
-    await store.setGuildCoreChannel(
-      guildId,
-      "tickets",
-      channel.id as ChannelId,
-    );
-    await store.setGuildCoreChannel(
-      guildId,
-      "ticketLogs",
-      logChannel.id as ChannelId,
-    );
+    // Save core channels using the flat repo
+    await repo.setCoreChannel(guildId, "tickets", channel.id);
+    await repo.setCoreChannel(guildId, "ticketLogs", logChannel.id);
+    await repo.setCoreChannel(guildId, "ticketCategory", category.id);
 
-    await store.setGuildCoreChannel(
-      guildId,
-      "ticketCategory",
-      category.id as ChannelId,
-    );
-
-    // Debug, traer los datos mandados a la base de datos para comprobar que se guardaron bien
-    const ticketChannel = await store.getGuildCoreChannel(guildId, "tickets");
-    const ticketLogs = await store.getGuildCoreChannel(guildId, "ticketLogs");
-    const ticketCategory = await store.getGuildCoreChannel(guildId, "ticketCategory");
+    // Debug: read back stored values
+    const ticketChannel = await repo.getCoreChannel(guildId, "tickets");
+    const ticketLogs = await repo.getCoreChannel(guildId, "ticketLogs");
+    const ticketCategory = await repo.getCoreChannel(guildId, "ticketCategory");
 
     console.log("Datos guardados en la base de datos:");
     console.log("Canal de tickets:", ticketChannel);
@@ -80,7 +69,3 @@ export default class ConfigTicketsCommand extends SubCommand {
     });
   }
 }
-
-
-
-
