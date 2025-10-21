@@ -9,7 +9,7 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { type RoleId } from "@/modules/flat_api";
+import { type RoleId } from "@/modules/repo";
 
 import { requireGuildContext } from "./shared";
 

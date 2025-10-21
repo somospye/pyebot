@@ -1,11 +1,11 @@
 import type { GuildCommandContext } from "seyfert";
 
-import { getDB } from "@/modules/flat_api";
+import { getDB } from "@/modules/repo";
 import type {
   FlatDataStore,
   GuildId,
   ManagedRoleSnapshot,
-} from "@/modules/flat_api";
+} from "@/modules/repo";
 import {
   DEFAULT_MODERATION_ACTIONS,
   listRoles,

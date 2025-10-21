@@ -1,4 +1,4 @@
-import type { GuildId } from "@/modules/flat_api";
+import type { GuildId } from "@/modules/repo";
 
 const DEFAULT_GUILD_ONLY_MESSAGE =
   "[!] Este comando solo puede ejecutarse dentro de un servidor.";

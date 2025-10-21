@@ -6,7 +6,7 @@ import {
   SubCommand,
 } from "seyfert";
 import { ChannelType } from "seyfert/lib/types";
-import { getDB, type ChannelId, type GuildId } from "@/modules/flat_api";
+import { getDB, type ChannelId } from "@/modules/repo";
 import { requireGuildId } from "@/utils/commandGuards";
 
 const options = {
@@ -59,7 +59,21 @@ export default class ConfigTicketsCommand extends SubCommand {
       logChannel.id as ChannelId,
     );
 
-    await store.setGuildTicketCategory(guildId, category.id as ChannelId);
+    await store.setGuildCoreChannel(
+      guildId,
+      "ticketCategory",
+      category.id as ChannelId,
+    );
+
+    // Debug, traer los datos mandados a la base de datos para comprobar que se guardaron bien
+    const ticketChannel = await store.getGuildCoreChannel(guildId, "tickets");
+    const ticketLogs = await store.getGuildCoreChannel(guildId, "ticketLogs");
+    const ticketCategory = await store.getGuildCoreChannel(guildId, "ticketCategory");
+
+    console.log("Datos guardados en la base de datos:");
+    console.log("Canal de tickets:", ticketChannel);
+    console.log("Canal de logs de tickets:", ticketLogs);
+    console.log("Categoría de tickets:", ticketCategory);
 
     await ctx.write({
       content: "Configuración de tickets guardada correctamente.",

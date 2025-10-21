@@ -8,7 +8,7 @@ import {
   SubCommand,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { type UserId } from "@/modules/flat_api";
+import { type UserId } from "@/modules/repo";
 import { listWarns, removeWarn } from "@/modules/moderation/warns";
 import { isValidWarnId } from "@/utils/warnId";
 

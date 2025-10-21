@@ -3,7 +3,7 @@ import {
   type ChannelId,
   type FlatDataStore,
   type GuildId,
-} from "@/modules/flat_api";
+} from "@/modules/repo";
 import type {
   CoreChannelRecord,
   GuildChannelsRecord,

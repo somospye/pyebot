@@ -9,7 +9,7 @@ import {
 } from "seyfert";
 import { MessageFlags, TextInputStyle } from "seyfert/lib/types";
 
-import { getDB, type GuildId } from "@/modules/flat_api";
+import { getDB, type GuildId } from "@/modules/repo";
 
 export const TICKET_SELECT_CUSTOM_ID = "tickets:category";
 export const TICKET_MODAL_PREFIX = "tickets:modal";

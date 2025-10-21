@@ -1,4 +1,4 @@
-import { getDB, type UserId } from "@/modules/flat_api";
+import { getDB, type UserId } from "@/modules/repo";
 import type { Warn } from "@/schemas/user";
 
 function warnStore() {

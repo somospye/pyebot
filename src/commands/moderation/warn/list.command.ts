@@ -1,7 +1,7 @@
 import type { Guild, GuildCommandContext } from "seyfert";
 import { createUserOption, Declare, Embed, Options, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { type UserId } from "@/modules/flat_api";
+import { type UserId } from "@/modules/repo";
 import { listWarns } from "@/modules/moderation/warns";
 import type { Warn } from "@/schemas/user";
 import { getMemberName } from "@/utils/guild";
