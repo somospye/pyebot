@@ -51,7 +51,7 @@ export interface ManagedChannelRecord {
 }
 
 export interface GuildChannelsRecord {
-  core: Record<CoreChannelName, CoreChannelRecord>;
+  core: Record<CoreChannelName, CoreChannelRecord | null>;
   managed: Record<string, ManagedChannelRecord>;
   ticketMessageId?: string | null;
 }
@@ -66,10 +66,13 @@ const EMPTY_CHANNELS: GuildChannelsRecord = {
   ticketMessageId: null,
 };
 
+const EMPTY_PENDING_TICKETS: string[] = [];
+
 export const guilds = pgTable("guilds", {
   id: varchar("id", { length: 50 }).primaryKey().notNull().unique(),
   roles: jsonb("roles").$type<GuildRolesRecord>().notNull().default(EMPTY_ROLES),
   channels: jsonb("channels").$type<GuildChannelsRecord>().notNull().default(EMPTY_CHANNELS),
+  pendingTickets: jsonb("pending_tickets").$type<string[]>().notNull().default(EMPTY_PENDING_TICKETS),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

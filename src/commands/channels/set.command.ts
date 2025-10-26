@@ -14,7 +14,7 @@ import {
   type CoreChannelName,
   setCoreChannel,
 } from "@/modules/guild-channels";
-import { requireGuildId } from "@/utils/commandGuards";
+import { requireGuildId, requireGuildPermission } from "@/utils/commandGuards";
 
 const nameChoices = CORE_CHANNEL_DEFINITIONS.map((definition) => ({
   name: `${definition.name} (${definition.label})`,
@@ -43,6 +43,12 @@ export default class ChannelSetCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const guildId = await requireGuildId(ctx);
     if (!guildId) return;
+
+    const allowed = await requireGuildPermission(ctx, {
+      guildId,
+      permissions: ["ManageChannels"],
+    });
+    if (!allowed) return;
 
     const name = ctx.options.name as CoreChannelName;
     const channelId = String(ctx.options.channel.id);

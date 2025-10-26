@@ -1,10 +1,6 @@
 import { createEvent } from "seyfert";
 import { emitMessageCreate } from "@/events/hooks/messageCreate";
 
-// import "@/events/messageCreate/autoModSystem";
-// import "@/events/messageCreate/aiResponse";
-// import "@/events/messageCreate/autoFormatCode";
-
 /**
  * Despacha el evento `messageCreate` de Seyfert a todos los listeners registrados.
  */

@@ -9,7 +9,7 @@ import {
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 import { addManagedChannel } from "@/modules/guild-channels";
-import { requireGuildId } from "@/utils/commandGuards";
+import { requireGuildId, requireGuildPermission } from "@/utils/commandGuards";
 
 const options = {
   label: createStringOption({
@@ -32,6 +32,12 @@ export default class ChannelAddCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const guildId = await requireGuildId(ctx);
     if (!guildId) return;
+
+    const allowed = await requireGuildPermission(ctx, {
+      guildId,
+      permissions: ["ManageChannels"],
+    });
+    if (!allowed) return;
 
     const label = ctx.options.label;
     const channelId = String(ctx.options.channel.id);

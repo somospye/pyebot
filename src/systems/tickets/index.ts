@@ -1,6 +1,9 @@
 import { getGuildChannels } from "@/modules/guild-channels";
+import { setPendingTickets } from "@/modules/repo";
+import { Colors } from "@/modules/ui/colors";
 import {
   ActionRow,
+  Button,
   Embed,
   Modal,
   StringSelectMenu,
@@ -8,13 +11,20 @@ import {
   TextInput,
   type UsingClient,
 } from "seyfert";
-import { MessageFlags, TextInputStyle } from "seyfert/lib/types";
+import {
+  ButtonStyle,
+  ChannelType,
+  MessageFlags,
+  TextInputStyle,
+} from "seyfert/lib/types";
 
 
 export const TICKET_SELECT_CUSTOM_ID = "tickets:category";
 export const TICKET_MODAL_PREFIX = "tickets:modal";
 export const TICKET_DETAILS_INPUT_ID = "ticket_details";
-const PROGRAMMERS_PLACEHOLDER = "<#000000000000000000>";
+
+// Format {PREFIX}:{ChannelId} to uniquely identify the ticket to close
+export const TICKET_CLOSE_BUTTON_ID = "tickets:close";
 
 export interface TicketCategory {
   id: string;
@@ -78,25 +88,26 @@ export async function ensureTicketMessage(client: UsingClient): Promise<void> {
     // Individually delete leftovers
     const remaining = await client.messages
       .list(channelId, { limit: 100 })
-      .catch(() => []);
+      .catch(() => {
+        console.error("[tickets] failed to list messages for channel", {
+          channelId,
+        });
+        return [];
+      });
     for (const m of remaining) {
       try {
         await client.messages.delete(m.id, channelId);
       } catch {
-        /* meh */
+        console.error("[tickets] failed to delete message", {
+          messageId: m.id,
+          channelId,
+        });
       }
     }
 
     // Recreate ticket message
     const payload = buildTicketMessagePayload();
-    const msg = await client.messages.write(channelId, payload);
-
-    // TODO: tipar el id del mensaje en squemas, agregar function para guardar id del mensaje en repo
-
-    client.logger?.info?.("[tickets] ticket message reset", {
-      channelId,
-      msgId: msg.id,
-    });
+    await client.messages.write(channelId, payload);
   }
 }
 
@@ -119,31 +130,110 @@ export function buildTicketModal(category: TicketCategory): Modal {
         ),
       )
 
-      /* Cuando se envía el modal -- creacion de ticket */
+      /* Cuando se envia el modal -- creacion de ticket */
       .run(async (ctx) => {
         const content = ctx.getInputValue(TICKET_DETAILS_INPUT_ID, true);
+        const guildId = ctx.guildId;
         console.debug("[tickets] createTicket", {
-          guildId: ctx.guildId,
+          guildId,
           userId: ctx.user?.id,
           category: category.id,
           content,
         });
 
-        // discord category channel -- here tickets will be created
-        // const ticket_category = await data.guilds.channels.getCore(ctx.guildId as GuildId, "")
+        if (!guildId) {
+          await ctx.write({
+            content:
+              "No se pudo crear el ticket porque no pudimos detectar el servidor.",
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
+        const channels = await getGuildChannels(guildId);
+        const ticketCategoryId =
+          channels.core?.ticketCategory?.channelId ?? null;
+
+        if (!ticketCategoryId) {
+          await ctx.write({
+            content:
+              "No hay una categoría configurada para tickets. Avísale a un administrador.",
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
+        const channelName = buildTicketChannelName(ctx.user?.username);
+
+        let ticketChannel;
+        try {
+          ticketChannel = await ctx.client.guilds.channels.create(guildId, {
+            name: channelName,
+            type: ChannelType.GuildText,
+            parent_id: ticketCategoryId,
+          });
+        } catch (error) {
+          ctx.client.logger?.error?.("[tickets] failed to create ticket channel", {
+            error,
+            guildId,
+            userId: ctx.user?.id,
+          });
+          await ctx.write({
+            content:
+              "Ocurrió un error al crear tu ticket. Inténtalo nuevamente en unos segundos.",
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
+        // Marcar el ticket como abierto en la base de datos
+        await setPendingTickets(guildId, (pending) => {
+          return [...pending, ticketChannel.id];
+        });
+
+        const welcomeEmbed = new Embed()
+          .setColor(Colors.info)
+          .setTitle(`Ticket - ${category.label}`)
+          .setDescription(
+              "Por favor, agrega toda la información relevante a tu solicitud mientras esperas..."
+          )
+          .setFooter({
+            text: `Creado por ${ctx.user?.username || "???"}`,
+          });
+
+        const reasonEmbed = new Embed()
+          .setColor(Colors.info)
+          .setTitle("Razón del Ticket")
+          .setDescription(content);
+
+        const row = new ActionRow<Button>().addComponents(
+          new Button()
+            .setCustomId(TICKET_CLOSE_BUTTON_ID + ":" + ticketChannel.id)
+            .setLabel("Cerrar Ticket")
+            .setStyle(ButtonStyle.Danger) // Discord no admite botones naranja; Danger es lo más cercano.
+        );
+
+        await ctx.client.messages.write(ticketChannel.id, {
+          embeds: [welcomeEmbed],
+          allowed_mentions: {
+            parse: [] as ("roles" | "users" | "everyone")[],
+          },
+        });
+
+        await ctx.client.messages.write(ticketChannel.id, {
+          embeds: [reasonEmbed],
+          components: [row],
+          allowed_mentions: {
+            parse: [] as ("roles" | "users" | "everyone")[],
+          },
+        });
 
         await ctx.write({
-          content: "✅ Gracias! Tu ticket fue enviado.",
+          content: `✅ Gracias! Tu ticket fue enviado: <#${ticketChannel.id}>`,
           flags: MessageFlags.Ephemeral,
         });
       })
   );
-}
-
-export function getTicketCategory(
-  categoryId: string,
-): TicketCategory | undefined {
-  return TICKET_CATEGORIES.find((category) => category.id === categoryId);
 }
 
 function buildTicketMessagePayload() {
@@ -158,7 +248,7 @@ function buildTicketMessagePayload() {
       ].join("\n"),
     )
     .setFooter({
-      text: `Para consultas de programacion utiliza: ${PROGRAMMERS_PLACEHOLDER}`,
+      text: `Los tickets NO son para soporte técnico. Usa uno de los foros públicos para eso.`,
     });
 
   const menu = new StringSelectMenu()
@@ -183,4 +273,22 @@ function buildTicketMessagePayload() {
     components: [row],
     allowed_mentions: { parse: [] as ("roles" | "users" | "everyone")[] },
   };
+}
+export function getTicketCategory(
+  categoryId: string,
+): TicketCategory | undefined {
+  return TICKET_CATEGORIES.find((category) => category.id === categoryId);
+}
+
+function buildTicketChannelName(username: string | undefined): string {
+  const base = (username ?? "usuario").normalize("NFD");
+  const sanitized = base
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+
+  const suffix = sanitized || "usuario";
+  return `reporte-${suffix}`.slice(0, 100);
 }

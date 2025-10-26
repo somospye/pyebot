@@ -14,7 +14,6 @@
     "lint:fix": "biome lint --write",
     "check": "biome check",
     "check:fix": "biome check --write",
-    "db:add-roles-column": "node scripts/addRolesColumn.js",
     "migrate-db": "pnpm drizzle-kit generate && pnpm drizzle-kit migrate",
     "clean": "rimraf dist commands.json"
   },

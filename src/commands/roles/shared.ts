@@ -10,7 +10,10 @@ import type {
   RoleCommandOverride,
   RoleLimitRecord,
 } from "@/schemas/guild";
-import { GUILD_ONLY_MESSAGE } from "@/utils/commandGuards";
+import {
+  GUILD_ONLY_MESSAGE,
+  requireGuildPermission,
+} from "@/utils/commandGuards";
 
 export const WINDOW_DESCRIPTIONS: Record<LimitWindow, string> = {
   "10m": "cada 10 minutos",
@@ -28,13 +31,25 @@ export interface ResolvedGuildContext {
 
 export async function requireGuildContext(
   ctx: GuildCommandContext,
+  permissions: string | readonly string[] | string[] = ["ManageRoles"],
 ): Promise<ResolvedGuildContext | null> {
   if (!ctx.guildId) {
     await ctx.write({ content: GUILD_ONLY_MESSAGE });
     return null;
   }
-  await repo.ensureGuild(ctx.guildId);
-  return { guildId: ctx.guildId };
+  const guildId = ctx.guildId;
+
+  const allowed = await requireGuildPermission(ctx, {
+    guildId,
+    permissions,
+  });
+
+  if (!allowed) {
+    return null;
+  }
+
+  await repo.ensureGuild(guildId);
+  return { guildId };
 }
 
 /* ------------------------------------------------------------------ */

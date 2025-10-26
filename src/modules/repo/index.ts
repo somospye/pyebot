@@ -129,6 +129,25 @@ export async function writeRoles(id: string, mutate: (current: any) => any) {
     return row!.roles;
 }
 
+// ----------------------------- TICKETS -----------------------------
+export async function getPendingTickets(guildId: string) {
+    const g = await ensureGuild(guildId);
+    return Array.isArray(g.pendingTickets) ? clone(g.pendingTickets) : [];
+}
+
+export async function setPendingTickets(guildId: string, update: (tickets: string[]) => string[]) {
+    const guild = await ensureGuild(guildId);
+    const current = Array.isArray(guild.pendingTickets) ? clone(guild.pendingTickets) : [];
+    const next = update(clone(current));
+    const sanitized = Array.isArray(next) ? next.filter((id): id is string => typeof id === "string") : [];
+    const [row] = await db
+        .update(guilds)
+        .set({ pendingTickets: sanitized, updatedAt: new Date() })
+        .where(eq(guilds.id, guildId))
+        .returning({ pendingTickets: guilds.pendingTickets });
+    return clone(row?.pendingTickets ?? []);
+}
+
 // Convenience wrappers (optional)
 export async function setCoreChannel(id: string, name: string, channelId: string) {
     return writeChannels(id, (c: any) => {

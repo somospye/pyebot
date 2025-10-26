@@ -7,68 +7,7 @@ import {
   type RoleLimitBlock,
   type ResolveRoleActionPermissionResult,
 } from "@/modules/guild-roles";
-
-async function collectRoleIds(
-  context: GuildCommandContext,
-): Promise<Set<string>> {
-  const member = context.member;
-  if (!member) return new Set();
-
-  const roles = await member.roles.list();
-  const ids = new Set<string>();
-  if (!roles) return ids;
-
-  const push = (value: unknown) => {
-    if (typeof value === "string" && value) {
-      ids.add(value);
-      return;
-    }
-
-    if (value && typeof value === "object") {
-      const candidate =
-        (value as { id?: unknown; roleId?: unknown }).id ??
-        (value as { id?: unknown; roleId?: unknown }).roleId;
-      if (typeof candidate === "string" && candidate) {
-        ids.add(candidate);
-      }
-    }
-  };
-
-  const iterate = (iterable: Iterable<unknown>) => {
-    for (const entry of iterable) push(entry);
-  };
-
-  if (Array.isArray(roles)) {
-    iterate(roles);
-    return ids;
-  }
-
-  if (typeof roles === "object" && roles) {
-    const cacheValues = (
-      roles as { cache?: { values?: () => Iterable<unknown> } }
-    ).cache?.values;
-    if (typeof cacheValues === "function") {
-      iterate(
-        cacheValues.call(
-          (roles as { cache: { values: () => Iterable<unknown> } }).cache,
-        ),
-      );
-      return ids;
-    }
-
-    const values = (roles as { values?: () => Iterable<unknown> }).values;
-    if (typeof values === "function") {
-      iterate(values.call(roles));
-      return ids;
-    }
-
-    if (Symbol.iterator in (roles as object)) {
-      iterate(roles as Iterable<unknown>);
-    }
-  }
-
-  return ids;
-}
+import { collectMemberRoleIds } from "@/utils/commandGuards";
 
 function formatSeconds(seconds: number): string {
   const total = Math.max(0, Math.ceil(seconds));
@@ -134,7 +73,7 @@ export const moderationLimit = createMiddleware<void>(async (middle) => {
     return middle.next();
   }
 
-  const roleIds = await collectRoleIds(context);
+  const roleIds = await collectMemberRoleIds(context.member ?? null);
   if (!roleIds.size) {
     return middle.next();
   }

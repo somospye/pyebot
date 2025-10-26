@@ -8,7 +8,7 @@ import {
 import { ChannelType } from "seyfert/lib/types";
 
 import * as repo from "@/modules/repo";
-import { requireGuildId } from "@/utils/commandGuards";
+import { requireGuildId, requireGuildPermission } from "@/utils/commandGuards";
 
 const options = {
   // Canal de tickets
@@ -26,7 +26,7 @@ const options = {
   }),
 
   // Canal de logs de tickets
-  logChannel: createChannelOption({
+  logchannel: createChannelOption({
     description: "Canal donde se enviaran los logs de los tickets",
     required: true,
     channel_types: [ChannelType.GuildText],
@@ -34,17 +34,22 @@ const options = {
 };
 
 @Declare({
-  name: "tickets",
+  name: "config",
   description: "Configurar el sistema de tickets",
-  defaultMemberPermissions: ["ManageChannels"],
 })
 @Options(options)
 export default class ConfigTicketsCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const { channel, category, logChannel } = ctx.options;
+    const { channel, category, logchannel: logChannel } = ctx.options;
 
     const guildId = await requireGuildId(ctx);
     if (!guildId) return;
+
+    const allowed = await requireGuildPermission(ctx, {
+      guildId,
+      permissions: ["ManageGuild"],
+    });
+    if (!allowed) return;
 
     // Ensure guild row exists
     await repo.ensureGuild(guildId);

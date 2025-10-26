@@ -11,7 +11,8 @@ import type { CoreChannelName } from "./constants";
 export async function getGuildChannels(guildId: string): Promise<GuildChannelsRecord> {
   await repo.ensureGuild(guildId);
   // repo.readChannels returns the channels JSONB blob
-  return (await repo.readChannels(guildId)) as GuildChannelsRecord;
+  let channels = await repo.readChannels(guildId);
+  return channels;
 }
 
 /** Set a core channel and return that single core entry. */
