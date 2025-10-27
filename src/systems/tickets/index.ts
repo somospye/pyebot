@@ -241,7 +241,7 @@ export function buildTicketModal(category: TicketCategory): Modal {
           new Button()
             .setCustomId(TICKET_CLOSE_BUTTON_ID + ":" + ticketChannel.id)
             .setLabel("Cerrar Ticket")
-            .setStyle(ButtonStyle.Danger) // Discord no admite botones naranja; Danger es lo más cercano.
+            .setStyle(ButtonStyle.Danger) // Discord no admite botones naranja; Danger es lo mas cercano.
         );
 
         await ctx.client.messages.write(ticketChannel.id, {
