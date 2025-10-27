@@ -79,11 +79,11 @@ interface RoleSnapshot {
 function normaliseAction(action: string): string {
   const trimmed = action.trim().toLowerCase();
   if (!trimmed) throw new Error("Action key must be provided.");
-  return trimmed;
+  return trimmed.replace(/[\s-]+/g, "_");
 }
 
 function normaliseKey(k: string) {
-  return k.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return normaliseAction(k);
 }
 
 async function listGuildRoleSnapshots(guildId: string): Promise<RoleSnapshot[]> {

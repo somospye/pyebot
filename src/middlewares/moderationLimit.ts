@@ -102,7 +102,7 @@ export const moderationLimit = createMiddleware<void>(async (middle) => {
     memberRoleIds: [...roleIds],
   });
 
-  console.debug("[moderation-limit] resultado", result);
+  // console.debug("[moderation-limit] resultado", result);
 
   if (result.allowed) {
     return middle.next();

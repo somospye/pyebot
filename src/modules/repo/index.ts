@@ -10,6 +10,13 @@ import { guilds } from "@/schemas/guild";
 // Tiny helper for JSON cloning at API edges only
 const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
+type UserPatch = Partial<{
+    bank: number;
+    cash: number;
+    warns: any[];
+    openTickets: string[];
+}>;
+
 // ----------------------------- USERS -----------------------------
 export async function getUser(id: string) {
     const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
@@ -21,7 +28,7 @@ export async function userExists(id: string) {
     return !!row;
 }
 
-export async function ensureUser(id: string, init: Partial<{ bank: number; cash: number; warns: any[] }> = {}) {
+export async function ensureUser(id: string, init: UserPatch = {}) {
     const [inserted] = await db.insert(users).values({ id, ...init }).onConflictDoNothing().returning();
     if (inserted) return inserted;
     const existing = await getUser(id);
@@ -29,12 +36,12 @@ export async function ensureUser(id: string, init: Partial<{ bank: number; cash:
     return existing;
 }
 
-export async function upsertUser(id: string, patch: Partial<{ bank: number; cash: number; warns: any[] }> = {}) {
+export async function upsertUser(id: string, patch: UserPatch = {}) {
     const [row] = await db.insert(users).values({ id, ...patch }).onConflictDoUpdate({ target: users.id, set: { ...patch } }).returning();
     return row!;
 }
 
-export async function updateUser(id: string, patch: Partial<{ bank: number; cash: number; warns: any[] }>) {
+export async function updateUser(id: string, patch: UserPatch) {
     if (!patch || Object.keys(patch).length === 0) return (await getUser(id)) ?? null;
     const [row] = await db.update(users).set({ ...patch }).where(eq(users.id, id)).returning();
     return row ?? null;
@@ -83,6 +90,55 @@ export async function removeWarn(id: string, warnId: string) {
 export async function clearWarns(id: string) {
     const [row] = await db.update(users).set({ warns: [] }).where(eq(users.id, id)).returning();
     return row!.warns ?? [];
+}
+
+export async function listOpenTickets(id: string) {
+    const user = await ensureUser(id);
+    return Array.isArray(user.openTickets) ? clone(user.openTickets) : [];
+}
+
+export async function setOpenTickets(id: string, tickets: string[]) {
+    await ensureUser(id);
+    const unique = Array.from(new Set(tickets.filter((value): value is string => typeof value === "string" && value.length > 0)));
+    const [row] = await db
+        .update(users)
+        .set({ openTickets: unique })
+        .where(eq(users.id, id))
+        .returning({ openTickets: users.openTickets });
+    return Array.isArray(row?.openTickets) ? clone(row.openTickets) : [];
+}
+
+export async function addOpenTicket(id: string, channelId: string) {
+    const current = await listOpenTickets(id);
+    if (current.includes(channelId)) return current;
+    current.push(channelId);
+    return setOpenTickets(id, current);
+}
+
+export async function removeOpenTicket(id: string, channelId: string) {
+    const current = await listOpenTickets(id);
+    return setOpenTickets(
+        id,
+        current.filter((entry) => entry !== channelId),
+    );
+}
+
+export async function removeOpenTicketByChannel(channelId: string) {
+    if (!channelId) return;
+    const rows = await db.select({ id: users.id, openTickets: users.openTickets }).from(users);
+    const owners = rows
+        .filter(
+            (row) =>
+                Array.isArray(row.openTickets) &&
+                row.openTickets.some((entry) => entry === channelId),
+        )
+        .map((row) => row.id);
+
+    await Promise.all(
+        owners.map((ownerId) => removeOpenTicket(ownerId, channelId).catch((error) => {
+            console.error("[repo] removeOpenTicket failed", { ownerId, channelId, error });
+        })),
+    );
 }
 
 // ----------------------------- GUILDS -----------------------------
@@ -140,9 +196,10 @@ export async function setPendingTickets(guildId: string, update: (tickets: strin
     const current = Array.isArray(guild.pendingTickets) ? clone(guild.pendingTickets) : [];
     const next = update(clone(current));
     const sanitized = Array.isArray(next) ? next.filter((id): id is string => typeof id === "string") : [];
+    const unique = Array.from(new Set(sanitized));
     const [row] = await db
         .update(guilds)
-        .set({ pendingTickets: sanitized, updatedAt: new Date() })
+        .set({ pendingTickets: unique, updatedAt: new Date() })
         .where(eq(guilds.id, guildId))
         .returning({ pendingTickets: guilds.pendingTickets });
     return clone(row?.pendingTickets ?? []);

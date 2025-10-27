@@ -5,6 +5,7 @@ export interface User {
   bank: number;
   cash: number;
   warns: Warn[] | null;
+  openTickets: string[] | null;
 }
 
 export interface Warn {
@@ -19,4 +20,5 @@ export const users = pgTable("users", {
   bank: integer("bank").notNull().default(0),
   cash: integer("cash").notNull().default(0),
   warns: jsonb("warns").$type<Warn[]>().default([]),
+  openTickets: jsonb("open_tickets").$type<string[]>().default([]),
 });

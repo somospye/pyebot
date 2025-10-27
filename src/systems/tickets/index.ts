@@ -1,5 +1,5 @@
 import { getGuildChannels } from "@/modules/guild-channels";
-import { setPendingTickets } from "@/modules/repo";
+import { addOpenTicket, listOpenTickets, setPendingTickets } from "@/modules/repo";
 import { Colors } from "@/modules/ui/colors";
 import {
   ActionRow,
@@ -25,6 +25,7 @@ export const TICKET_DETAILS_INPUT_ID = "ticket_details";
 
 // Format {PREFIX}:{ChannelId} to uniquely identify the ticket to close
 export const TICKET_CLOSE_BUTTON_ID = "tickets:close";
+export const MAX_TICKETS_PER_USER = 1;
 
 export interface TicketCategory {
   id: string;
@@ -94,7 +95,23 @@ export async function ensureTicketMessage(client: UsingClient): Promise<void> {
         });
         return [];
       });
+    const botId = client.me?.id ?? null;
     for (const m of remaining) {
+      const hasTicketComponent =
+        Array.isArray(m.components) &&
+        m.components.some((row: any) =>
+          Array.isArray(row?.components) &&
+          row.components.some(
+            (component: any) =>
+              typeof component?.customId === "string" &&
+              component.customId.startsWith(TICKET_SELECT_CUSTOM_ID),
+          ),
+        );
+
+      if (botId && m.author?.id !== botId && !hasTicketComponent) {
+        continue;
+      }
+
       try {
         await client.messages.delete(m.id, channelId);
       } catch {
@@ -134,17 +151,30 @@ export function buildTicketModal(category: TicketCategory): Modal {
       .run(async (ctx) => {
         const content = ctx.getInputValue(TICKET_DETAILS_INPUT_ID, true);
         const guildId = ctx.guildId;
-        console.debug("[tickets] createTicket", {
-          guildId,
-          userId: ctx.user?.id,
-          category: category.id,
-          content,
-        });
+        const userId = ctx.user?.id;
 
         if (!guildId) {
           await ctx.write({
             content:
               "No se pudo crear el ticket porque no pudimos detectar el servidor.",
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
+        if (!userId) {
+          await ctx.write({
+            content: "No pudimos identificar tu usuario. Intentalo nuevamente.",
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
+        const openTickets = await listOpenTickets(userId);
+        if (openTickets.length >= MAX_TICKETS_PER_USER) {
+          await ctx.write({
+            content:
+              "Ya tienes un ticket abierto. Cierra el anterior antes de crear uno nuevo.",
             flags: MessageFlags.Ephemeral,
           });
           return;
@@ -157,7 +187,7 @@ export function buildTicketModal(category: TicketCategory): Modal {
         if (!ticketCategoryId) {
           await ctx.write({
             content:
-              "No hay una categoría configurada para tickets. Avísale a un administrador.",
+              "No hay una categoria configurada para tickets. Avisale a un administrador.",
             flags: MessageFlags.Ephemeral,
           });
           return;
@@ -180,7 +210,7 @@ export function buildTicketModal(category: TicketCategory): Modal {
           });
           await ctx.write({
             content:
-              "Ocurrió un error al crear tu ticket. Inténtalo nuevamente en unos segundos.",
+              "Ocurrio un error al crear tu ticket. Intentalo nuevamente en unos segundos.",
             flags: MessageFlags.Ephemeral,
           });
           return;
@@ -190,12 +220,13 @@ export function buildTicketModal(category: TicketCategory): Modal {
         await setPendingTickets(guildId, (pending) => {
           return [...pending, ticketChannel.id];
         });
+        await addOpenTicket(userId, ticketChannel.id);
 
         const welcomeEmbed = new Embed()
           .setColor(Colors.info)
           .setTitle(`Ticket - ${category.label}`)
           .setDescription(
-              "Por favor, agrega toda la información relevante a tu solicitud mientras esperas..."
+              "Por favor, agrega toda la informacion relevante a tu solicitud mientras esperas..."
           )
           .setFooter({
             text: `Creado por ${ctx.user?.username || "???"}`,
@@ -203,7 +234,7 @@ export function buildTicketModal(category: TicketCategory): Modal {
 
         const reasonEmbed = new Embed()
           .setColor(Colors.info)
-          .setTitle("Razón del Ticket")
+          .setTitle("Razon del Ticket")
           .setDescription(content);
 
         const row = new ActionRow<Button>().addComponents(

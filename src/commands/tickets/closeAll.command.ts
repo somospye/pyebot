@@ -5,6 +5,7 @@ import {
 } from "seyfert";
 
 import * as repo from "@/modules/repo";
+import { closeTicket } from "@/systems/tickets/shared";
 import { requireGuildId, requireGuildPermission } from "@/utils/commandGuards";
 
 
@@ -33,21 +34,35 @@ export default class ConfigTicketsCommand extends SubCommand {
 
         // Close each ticket channel
         for (const ticketChannelId of pendingTickets) {
+            let channelDeleted = false;
             try {
                 const channel = await ctx.client.channels.fetch(ticketChannelId);
-                if (channel) {
+                if (!channel) {
+                    channelDeleted = true;
+                } else {
                     await ctx.client.channels.delete(channel.id);
+                    channelDeleted = true;
                 }
             } catch (error) {
-                ctx.client.logger?.error?.("[tickets] failed to close ticket channel", {
-                    error,
-                    ticketChannelId,
-                });
+                const code =
+                    typeof error === "object" && error && "code" in (error as Record<string, unknown>)
+                        ? Number((error as { code?: number }).code)
+                        : undefined;
+
+                if (code === 10003) {
+                    channelDeleted = true; // channel already removed
+                } else {
+                    ctx.client.logger?.error?.("[tickets] failed to close ticket channel", {
+                        error,
+                        ticketChannelId,
+                    });
+                }
+            }
+
+            if (channelDeleted) {
+                await closeTicket(guildId, ticketChannelId);
             }
         }
-
-        // Clear pending tickets in the database
-        await repo.setPendingTickets(guildId, (_) => []);
 
         await ctx.write({
             content: "Todos los tickets abiertos han sido cerrados.",
