@@ -7,9 +7,7 @@ import { eq, sql } from "drizzle-orm";
 import { users } from "@/schemas/user";
 import { guilds } from "@/schemas/guild";
 
-// Tiny helper for JSON cloning at API edges only
-const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
-
+import { deepClone } from "./helpers";
 type UserPatch = Partial<{
     bank: number;
     cash: number;
