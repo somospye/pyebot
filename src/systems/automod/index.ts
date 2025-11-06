@@ -1,10 +1,10 @@
-import type { UsingClient, Message } from "seyfert";
-import { spamFilterList, scamFilterList } from "@/constants/automod";
-import { phash } from "@/utils/phash";
-import { Cache } from "@/utils/cache";
-import { recognizeText } from "@/services/ocr";
-
+import type { Message, UsingClient } from "seyfert";
+import { scamFilterList, spamFilterList } from "@/constants/automod";
 import { getGuildChannels } from "@/modules/guild-channels";
+import { recognizeText } from "@/services/ocr";
+import { Cache } from "@/utils/cache";
+import { phash } from "@/utils/phash";
+
 type AttachmentLike = {
   contentType?: string | null;
 
@@ -81,10 +81,7 @@ export class AutoModSystem {
         // ? Se podria avisar al staff o similar
       }
       if (spamFilter.warnMessage) {
-        await this.notifySuspiciousActivity(
-          spamFilter.warnMessage,
-          message,
-        );
+        await this.notifySuspiciousActivity(spamFilter.warnMessage, message);
       }
       return true;
     }
@@ -160,26 +157,27 @@ export class AutoModSystem {
   private async flagSuspiciousImage(message: Message, attachmentUrl: string) {
     await this.notifySuspiciousActivity(
       `Imagen sospechosa. ${message.author.tag}: ${attachmentUrl}`,
-      message
+      message,
     );
   }
   /**
    * Aviso al equipo de moderación. Si falla, no frenamos el flujo porque quizá el mensaje ya no está.
    */
-  private async notifySuspiciousActivity(
-    warning: string,
-    message: Message
-  ) {
+  private async notifySuspiciousActivity(warning: string, message: Message) {
     // Obtener canal de staff desde la base de datos
-    let guildId = message.member?.guildId;
+    const guildId = message.member?.guildId;
     if (!guildId) {
-      console.error("AutoModSystem: no se pudo obtener ID de la guild del mensaje al tratar de notificar al staff.");
+      console.error(
+        "AutoModSystem: no se pudo obtener ID de la guild del mensaje al tratar de notificar al staff.",
+      );
       return;
     }
     const channels = await getGuildChannels(guildId);
     const staffChannel = channels.core.staff;
     if (!staffChannel) {
-      console.error("AutoModSystem: no se pudo obtener canal de staff de la guild al tratar de notificar al staff.");
+      console.error(
+        "AutoModSystem: no se pudo obtener canal de staff de la guild al tratar de notificar al staff.",
+      );
       return;
     }
     // TODO: botones para borrar el mensaje directamente y saltar al mensaje
@@ -192,4 +190,3 @@ export class AutoModSystem {
       );
   }
 }
-

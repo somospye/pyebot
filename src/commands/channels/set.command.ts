@@ -14,6 +14,7 @@ import {
   type CoreChannelName,
   setCoreChannel,
 } from "@/modules/guild-channels";
+import { requireGuildId, requireGuildPermission } from "@/utils/commandGuards";
 
 const nameChoices = CORE_CHANNEL_DEFINITIONS.map((definition) => ({
   name: `${definition.name} (${definition.label})`,
@@ -40,20 +41,19 @@ const options = {
 @Options(options)
 export default class ChannelSetCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
-    const guildId = ctx.guildId;
-    if (!guildId) {
-      throw new Error("Guild ID is required to actualizar un canal requerido");
-    }
+    const guildId = await requireGuildId(ctx);
+    if (!guildId) return;
+
+    const allowed = await requireGuildPermission(ctx, {
+      guildId,
+      permissions: ["ManageChannels"],
+    });
+    if (!allowed) return;
 
     const name = ctx.options.name as CoreChannelName;
     const channelId = String(ctx.options.channel.id);
 
-    const record = await setCoreChannel(
-      guildId,
-      name,
-      channelId,
-      ctx.db.instance,
-    );
+    const record = await setCoreChannel(guildId, name, channelId);
 
     const embed = new Embed({
       title: "Canal actualizado",

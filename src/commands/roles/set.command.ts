@@ -1,15 +1,16 @@
 import type { GuildCommandContext } from "seyfert";
 import {
+  createRoleOption,
+  createStringOption,
   Declare,
   Embed,
   Options,
   SubCommand,
-  createRoleOption,
-  createStringOption,
 } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
 
-import { upsertRole } from "@/modules/guild-roles";
+import * as repo from "@/modules/repo";
+import { requireGuildContext } from "./shared";
 
 const options = {
   key: createStringOption({
@@ -22,7 +23,6 @@ const options = {
   }),
 };
 
-// Crea o actualiza la configuracion basica de un rol administrado.
 @Declare({
   name: "set",
   description: "Registrar o actualizar un rol administrado",
@@ -30,6 +30,9 @@ const options = {
 @Options(options)
 export default class RoleSetCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
+    const context = await requireGuildContext(ctx);
+    if (!context) return;
+
     const key = ctx.options.key.trim();
     const roleId = String(ctx.options.role.id);
 
@@ -39,21 +42,21 @@ export default class RoleSetCommand extends SubCommand {
         description: "Proporciona una clave no vacia para registrar el rol.",
         color: EmbedColors.Red,
       });
-
       await ctx.write({ embeds: [embed] });
       return;
     }
 
-    const { record } = await upsertRole(
-      ctx.guildId,
-      {
-        key,
-        label: key,
-        discordRoleId: roleId,
-        updatedBy: ctx.author.id,
-      },
-      ctx.db.instance,
-    );
+    await repo.ensureGuild(context.guildId);
+
+    // Upsert minimal role record
+    await repo.upsertRole(context.guildId, key, {
+      label: key,
+      discordRoleId: roleId,
+      updatedBy: ctx.author.id,
+    });
+
+    // Read back the role to show current state
+    const role = await repo.getRole(context.guildId, key);
 
     const embed = new Embed({
       title: "Rol administrado registrado",
@@ -62,11 +65,11 @@ export default class RoleSetCommand extends SubCommand {
         { name: "Clave", value: key },
         {
           name: "Rol",
-          value: record.discordRoleId ? `<@&${record.discordRoleId}>` : "Sin asignar",
+          value: role?.discordRoleId ? `<@&${role.discordRoleId}>` : "Sin asignar",
         },
         {
           name: "Limites configurados",
-          value: Object.keys(record.limits ?? {}).length.toString(),
+          value: String(Object.keys((role?.limits ?? {}) as Record<string, unknown>).length),
         },
       ],
     });

@@ -49,7 +49,7 @@ export default class SuggestCommand extends Command {
       return;
     }
 
-    const channels = await getGuildChannels(guildId, ctx.db.instance);
+    const channels = await getGuildChannels(guildId);
     const suggest_channel = channels.managed.suggestions;
 
     if (!suggest_channel) {

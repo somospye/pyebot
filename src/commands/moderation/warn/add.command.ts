@@ -10,6 +10,7 @@ import {
 import { EmbedColors } from "seyfert/lib/common";
 import type { Warn } from "@/schemas/user";
 import { generateWarnId } from "@/utils/warnId";
+import { addWarn, listWarns } from "@/modules/repo";
 
 const options = {
   user: createUserOption({
@@ -17,43 +18,28 @@ const options = {
     required: true,
   }),
   reason: createStringOption({
-    description: "Razón del warn",
+    description: "Razon del warn",
     required: false,
   }),
 };
 
 @Declare({
   name: "add",
-  description: "Añadir un warn a un usuario",
+  description: "Anadir un warn a un usuario",
 })
 @Options(options)
 export default class AddWarnCommand extends SubCommand {
   async run(ctx: GuildCommandContext<typeof options>) {
     const { user, reason } = ctx.options;
-    const userRepository = ctx.db.repositories.user;
-
-    const hasUser = await userRepository.has(user.id);
-    if (!hasUser) await userRepository.create(user.id);
-
-    const userDb = await userRepository.get(user.id);
-    if (!userDb) {
-      await ctx.write({
-        content:
-          "✗ No se pudo inicializar el usuario en la base de datos. Intenta nuevamente.",
-      });
-      return;
-    }
-    const existingWarns = userDb.warns ?? [];
+    const existingWarns = await listWarns(user.id);
     const existingIds = new Set(existingWarns.map((warn) => warn.warn_id));
 
     let warnId = generateWarnId();
-
-    // Evitar colisiones; extremadamente improbables
     while (existingIds.has(warnId)) {
       warnId = generateWarnId();
     }
 
-    const finalReason = reason || "Razón no especificada";
+    const finalReason = reason || "Razon no especificada";
 
     const warn: Warn = {
       reason: finalReason,
@@ -62,16 +48,16 @@ export default class AddWarnCommand extends SubCommand {
       timestamp: new Date().toISOString(),
     };
 
-    await userRepository.addWarn(user.id, warn);
+    await addWarn(user.id, warn);
 
     const successEmbed = new Embed({
       title: "Usuario warneado",
-      description: `
-            ✓ Se añadió un warn al usuario **${user.username}**.
-            
-            **Razón:** ${finalReason}
-            **ID del warn:** ${warnId.toUpperCase()}
-            `,
+      description: [
+        `Se anadio un warn al usuario **${user.username}**.`,
+        "",
+        `**Razon:** ${finalReason}`,
+        `**ID del warn:** ${warnId.toUpperCase()}`,
+      ].join("\n"),
       color: EmbedColors.Green,
       footer: {
         text: `Warneado por ${ctx.author.username}`,

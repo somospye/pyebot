@@ -8,13 +8,11 @@ export type RoleCapabilityKey = string;
 export type RoleCommandOverride = "inherit" | "allow" | "deny";
 export type RoleCommandOverrideMap = Record<RoleCapabilityKey, RoleCommandOverride>;
 
-export const LIMIT_WINDOWS = ["10m", "1h", "6h", "24h", "7d"] as const;
-export type LimitWindow = (typeof LIMIT_WINDOWS)[number];
+export type LimitWindow = `${number}${"m" | "h" | "d"}`;
 
 export interface RoleLimitRecord {
   limit: number;
   window: LimitWindow | null;
-  /** Optional precise window (in seconds) for backwards compatibility or future extensions. */
   windowSeconds?: number | null;
 }
 
@@ -53,8 +51,9 @@ export interface ManagedChannelRecord {
 }
 
 export interface GuildChannelsRecord {
-  core: Record<CoreChannelName, CoreChannelRecord>;
+  core: Record<CoreChannelName, CoreChannelRecord | null>;
   managed: Record<string, ManagedChannelRecord>;
+  ticketMessageId?: string | null;
 }
 
 /** Default payload used when bootstrapping the roles column. */
@@ -64,12 +63,16 @@ const EMPTY_ROLES: GuildRolesRecord = {};
 const EMPTY_CHANNELS: GuildChannelsRecord = {
   core: {} as Record<CoreChannelName, CoreChannelRecord>,
   managed: {},
+  ticketMessageId: null,
 };
+
+const EMPTY_PENDING_TICKETS: string[] = [];
 
 export const guilds = pgTable("guilds", {
   id: varchar("id", { length: 50 }).primaryKey().notNull().unique(),
   roles: jsonb("roles").$type<GuildRolesRecord>().notNull().default(EMPTY_ROLES),
   channels: jsonb("channels").$type<GuildChannelsRecord>().notNull().default(EMPTY_CHANNELS),
+  pendingTickets: jsonb("pending_tickets").$type<string[]>().notNull().default(EMPTY_PENDING_TICKETS),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

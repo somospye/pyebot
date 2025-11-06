@@ -7,7 +7,6 @@ import { emitMessageReactionAdd } from "@/events/hooks/messageReaction";
 export default createEvent({
   data: { name: "messageReactionAdd" },
   async run(message, client, shardId) {
-    console.debug("Event: messageReactionAdd", { emoji: message.emoji.name, userId: message.userId });
     await emitMessageReactionAdd(message, client, shardId);
   },
 });

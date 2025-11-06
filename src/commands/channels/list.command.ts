@@ -1,7 +1,11 @@
 import type { GuildCommandContext } from "seyfert";
 import { Declare, Embed, SubCommand } from "seyfert";
 import { EmbedColors } from "seyfert/lib/common";
-import { CORE_CHANNEL_DEFINITIONS, getGuildChannels } from "@/modules/guild-channels";
+import {
+  CORE_CHANNEL_DEFINITIONS,
+  getGuildChannels,
+} from "@/modules/guild-channels";
+import { requireGuildId, requireGuildPermission } from "@/utils/commandGuards";
 
 function formatChannelMention(channelId: string): string {
   return channelId ? `<#${channelId}>` : "Sin canal";
@@ -14,22 +18,30 @@ function formatChannelMention(channelId: string): string {
 })
 export default class ChannelListCommand extends SubCommand {
   async run(ctx: GuildCommandContext) {
-    const guildId = ctx.guildId;
-    if (!guildId) {
-      throw new Error("Guild ID is required to listar los canales configurados");
-    }
+    const guildId = await requireGuildId(ctx);
+    if (!guildId) return;
 
-    const snapshot = await getGuildChannels(guildId, ctx.db.instance);
+    const allowed = await requireGuildPermission(ctx, {
+      guildId,
+      permissions: ["ManageChannels"],
+    });
+    if (!allowed) return;
+
+    const guild_channels_record = await getGuildChannels(guildId);
 
     const coreLines = CORE_CHANNEL_DEFINITIONS.map((definition) => {
-      const entry = snapshot.core[definition.name];
-      return `\u0007 **${definition.name}** (${definition.label}) \u001a ${formatChannelMention(entry.channelId)}`;
+      const entry = guild_channels_record.core[definition.name];
+      if(!entry) {
+        return `**${definition.name}** (${definition.label}) -> Sin canal`;
+      }
+
+      return `**${definition.name}** (${definition.label}) -> ${formatChannelMention(entry.channelId)}`;
     }).join("\n\n");
 
-    const managedEntries = Object.values(snapshot.managed);
+    const managedEntries = Object.values(guild_channels_record.managed);
     const managedLines = managedEntries.length
       ? managedEntries
-        .map((entry) => `\u0007 **${entry.id}** (${entry.label}) \u001a ${formatChannelMention(entry.channelId)}`)
+        .map((entry) => `**${entry.id}** (${entry.label}) -> ${formatChannelMention(entry.channelId)}`)
         .join("\n")
       : "Sin canales opcionales configurados.";
 

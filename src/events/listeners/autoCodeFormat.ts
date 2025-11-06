@@ -12,7 +12,6 @@ onMessageCreate(async (message) => {
     if (message.author?.bot) return;
 
     const is_code = detectCodeLanguage(message.content);
-    console.debug("Auto code format analysis", { user: message.author?.username, lang: is_code.lang, confidence: is_code.confidence });
 
     const reaction_listener = onMessageReactionAdd(async (interaction) => {
         // Solo responder a reacciones en el mensaje original
@@ -23,7 +22,6 @@ onMessageCreate(async (message) => {
         ) return;
 
         const fenced = toFencedBlock(message.content);
-        console.debug("Auto code formatting triggered by reaction", { user: interaction.member?.user.username, lang: is_code.lang, confidence: is_code.confidence });
 
         if (fenced) {
             // delete original message
@@ -31,7 +29,7 @@ onMessageCreate(async (message) => {
             // send formatted code block
             await message.write({ content: fenced });
 
-            reaction_listener.off(); // desuscribirse para no responder más veces
+            reaction_listener(); // desuscribirse para no responder más veces
         }
     });
 
